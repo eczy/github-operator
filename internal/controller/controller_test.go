@@ -1,0 +1,150 @@
+package controller
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/google/go-github/v60/github"
+)
+
+var _ GitHubRequester = &TestGitHubClient{}
+
+type TestOrganization struct {
+	Slug          string
+	Id            int64
+	TeamById      map[int64]*github.Team
+	TeamBySlug    map[string]*github.Team
+	TeamIdCounter int64
+}
+
+func NewTestOrganization(slug string, id int64) *TestOrganization {
+	return &TestOrganization{
+		Slug:          slug,
+		Id:            id,
+		TeamById:      map[int64]*github.Team{},
+		TeamBySlug:    map[string]*github.Team{},
+		TeamIdCounter: 0,
+	}
+}
+
+type TestGitHubClient struct {
+	OrgsBySlug map[string]*TestOrganization
+	OrgsById   map[int64]*TestOrganization
+}
+
+type TestGitHubClientOption = func(*TestGitHubClient)
+
+func WithTestOrganization(org TestOrganization) TestGitHubClientOption {
+	return func(tghc *TestGitHubClient) {
+		tghc.OrgsById[org.Id] = &org
+		tghc.OrgsBySlug[org.Slug] = &org
+	}
+}
+
+func NewTestGitHubClient(opts ...TestGitHubClientOption) *TestGitHubClient {
+	client := &TestGitHubClient{
+		OrgsBySlug: map[string]*TestOrganization{},
+		OrgsById:   map[int64]*TestOrganization{},
+	}
+	for _, opt := range opts {
+		opt(client)
+	}
+	return client
+}
+
+// TeamRequester
+func (tghc *TestGitHubClient) GetTeamBySlug(ctx context.Context, org string, slug string) (*github.Team, error) {
+	errMsg := fmt.Errorf("no team with slug '%s' in org '%s'", slug, org)
+	if org, ok := tghc.OrgsBySlug[org]; ok {
+		if org.TeamBySlug == nil {
+			return nil, errMsg
+		}
+		if team, ok := org.TeamBySlug[slug]; ok {
+			return team, nil
+		}
+	}
+	return nil, errMsg
+}
+
+func (tghc *TestGitHubClient) GetTeamById(ctx context.Context, org int64, teamId int64) (*github.Team, error) {
+	errMsg := fmt.Errorf("no team with id '%d' in org '%d'", teamId, org)
+	if org, ok := tghc.OrgsById[org]; ok {
+		if org.TeamBySlug == nil {
+			return nil, errMsg
+		}
+		if team, ok := org.TeamById[teamId]; ok {
+			return team, nil
+		}
+	}
+	return nil, errMsg
+}
+
+// Note: newTeam.Name will be used as the slug for the new team without special handling. Do not include illegal characters for slugs.
+func (tghc *TestGitHubClient) CreateTeam(ctx context.Context, org string, newTeam github.NewTeam) (*github.Team, error) {
+	if org, ok := tghc.OrgsBySlug[org]; ok {
+		id := org.TeamIdCounter
+		org.TeamIdCounter += 1
+		team := &github.Team{
+			ID:          github.Int64(id),
+			Name:        &newTeam.Name,
+			Description: newTeam.Description,
+		}
+		org.TeamById[id] = team
+		org.TeamBySlug[newTeam.Name] = team
+		return team, nil
+	}
+	return nil, fmt.Errorf("failed to create team")
+}
+
+func (tghc *TestGitHubClient) UpdateTeamBySlug(ctx context.Context, org string, slug string, newTeam github.NewTeam) (*github.Team, error) {
+	if organization, ok := tghc.OrgsBySlug[org]; ok {
+		if team, ok := organization.TeamBySlug[slug]; ok {
+			team.Name = &newTeam.Name
+			if newTeam.Description != nil {
+				team.Description = newTeam.Description
+			}
+			return team, nil
+		}
+		return nil, fmt.Errorf("team '%s' not found in org '%s'", slug, org)
+	}
+	return nil, fmt.Errorf("org '%s' not found", org)
+}
+
+func (tghc *TestGitHubClient) UpdateTeamById(ctx context.Context, org int64, teamId int64, newTeam github.NewTeam) (*github.Team, error) {
+	if organization, ok := tghc.OrgsById[org]; ok {
+		if team, ok := organization.TeamById[teamId]; ok {
+			team.Name = &newTeam.Name
+			if newTeam.Description != nil {
+				team.Description = newTeam.Description
+			}
+			return team, nil
+		}
+		return nil, fmt.Errorf("team '%d' not found in org '%d'", teamId, org)
+	}
+	return nil, fmt.Errorf("org '%d' not found", org)
+}
+
+func (tghc *TestGitHubClient) DeleteTeamBySlug(ctx context.Context, org string, slug string) error {
+	if organization, ok := tghc.OrgsBySlug[org]; ok {
+		if team, ok := organization.TeamBySlug[slug]; ok {
+			delete(organization.TeamBySlug, slug)
+			delete(organization.TeamById, *team.ID)
+
+			return nil
+		}
+		return fmt.Errorf("team '%s' not found in org '%s'", slug, org)
+	}
+	return fmt.Errorf("org '%s' not found", org)
+}
+
+func (tghc *TestGitHubClient) DeleteTeamById(ctx context.Context, org int64, teamId int64) error {
+	if organization, ok := tghc.OrgsById[org]; ok {
+		if team, ok := organization.TeamById[teamId]; ok {
+			delete(organization.TeamBySlug, *team.Slug)
+			delete(organization.TeamById, teamId)
+			return nil
+		}
+		return fmt.Errorf("team '%d' not found in org '%d'", teamId, org)
+	}
+	return fmt.Errorf("org '%d' not found", org)
+}

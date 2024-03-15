@@ -2,9 +2,45 @@
 # This file is used to track the info used to scaffold your project
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
-domain: github-operator.evanczyzycki.com
+domain: github-operator.eczy.io
 layout:
 - go.kubebuilder.io/v4
 projectName: github-operator
 repo: github.com/eczy/github-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: github-operator.eczy.io
+  group: github
+  kind: Team
+  path: github.com/eczy/github-operator/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: github-operator.eczy.io
+  group: github
+  kind: Team
+  path: github.com/eczy/github-operator/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: github-operator.eczy.io
+  group: github
+  kind: Repository
+  path: github.com/eczy/github-operator/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: github-operator.eczy.io
+  group: github
+  kind: Organization
+  path: github.com/eczy/github-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

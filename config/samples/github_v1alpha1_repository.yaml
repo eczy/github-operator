@@ -1,0 +1,12 @@
+apiVersion: github.github-operator.eczy.io/v1alpha1
+kind: Repository
+metadata:
+  labels:
+    app.kubernetes.io/name: repository
+    app.kubernetes.io/instance: repository-sample
+    app.kubernetes.io/part-of: github-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: github-operator
+  name: repository-sample
+spec:
+  # TODO(user): Add fields here
