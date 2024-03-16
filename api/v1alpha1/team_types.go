@@ -28,25 +28,36 @@ type TeamSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	//+kubebuilder:validation:MinLength=1
+
 	// Organization name. Not case sensitive.
 	Organization string `json:"organization"`
+
+	//+kubebuilder:validation:MinLength=1
+
 	// Name of the team.
 	Name string `json:"name"`
+
 	// Description of the team.
 	// +optional
 	Description *string `json:"description,omitempty"`
 
-	// // List of GitHub IDs for standard members.
-	// Members []string `json:"members,omitempty"`
+	// List of GitHub IDs for standard members.
+	// +optional
+	Members []string `json:"members,omitempty"`
+
 	// List of GitHub IDs for maintainers.
 	// +optional
 	Maintainers []string `json:"maintainers,omitempty"`
+
 	// Level of privacy the team should have.
 	// +optional
 	Privacy *Privacy `json:"privacy,omitempty"`
+
 	// Notification setting for members of the team.
 	// +optional
 	NotificationSetting *NotificationSetting `json:"notification_setting,omitempty"`
+
 	// ID of the team to set as the parent of this team
 	// +optional
 	ParentTeamId *int64 `json:"parent_team_id,omitempty"`
@@ -57,8 +68,18 @@ type TeamStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Id   *int64  `json:"id,omitempty"`
-	Slug *string `json:"slug,omitempty"`
+	Id                  *int64       `json:"id,omitempty"`
+	Slug                *string      `json:"slug,omitempty"`
+	LastUpdateTimestamp *metav1.Time `json:"last_update_timestamp,omitempty"`
+
+	Organization        string               `json:"organization"`
+	Name                string               `json:"name"`
+	Description         *string              `json:"description,omitempty"`
+	Members             []string             `json:"members,omitempty"`
+	Maintainers         []string             `json:"maintainers,omitempty"`
+	Privacy             *Privacy             `json:"privacy,omitempty"`
+	NotificationSetting *NotificationSetting `json:"notification_setting,omitempty"`
+	ParentTeamId        *int64               `json:"parent_team_id,omitempty"`
 }
 
 //+kubebuilder:object:root=true

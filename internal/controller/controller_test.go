@@ -55,11 +55,11 @@ func NewTestGitHubClient(opts ...TestGitHubClientOption) *TestGitHubClient {
 // TeamRequester
 func (tghc *TestGitHubClient) GetTeamBySlug(ctx context.Context, org string, slug string) (*github.Team, error) {
 	errMsg := fmt.Errorf("no team with slug '%s' in org '%s'", slug, org)
-	if org, ok := tghc.OrgsBySlug[org]; ok {
-		if org.TeamBySlug == nil {
+	if organization, ok := tghc.OrgsBySlug[org]; ok {
+		if organization.TeamBySlug == nil {
 			return nil, errMsg
 		}
-		if team, ok := org.TeamBySlug[slug]; ok {
+		if team, ok := organization.TeamBySlug[slug]; ok {
 			return team, nil
 		}
 	}
@@ -81,16 +81,24 @@ func (tghc *TestGitHubClient) GetTeamById(ctx context.Context, org int64, teamId
 
 // Note: newTeam.Name will be used as the slug for the new team without special handling. Do not include illegal characters for slugs.
 func (tghc *TestGitHubClient) CreateTeam(ctx context.Context, org string, newTeam github.NewTeam) (*github.Team, error) {
-	if org, ok := tghc.OrgsBySlug[org]; ok {
-		id := org.TeamIdCounter
-		org.TeamIdCounter += 1
+	if organization, ok := tghc.OrgsBySlug[org]; ok {
+		if _, ok := organization.TeamBySlug[newTeam.Name]; ok {
+			return nil, fmt.Errorf("team '%s' already exists in org '%s'", newTeam.Name, org)
+		}
+		id := organization.TeamIdCounter
+		organization.TeamIdCounter += 1
 		team := &github.Team{
 			ID:          github.Int64(id),
 			Name:        &newTeam.Name,
 			Description: newTeam.Description,
+			Organization: &github.Organization{
+				Name: github.String(org),
+				ID:   github.Int64(organization.Id),
+			},
+			Slug: &newTeam.Name,
 		}
-		org.TeamById[id] = team
-		org.TeamBySlug[newTeam.Name] = team
+		organization.TeamById[id] = team
+		organization.TeamBySlug[newTeam.Name] = team
 		return team, nil
 	}
 	return nil, fmt.Errorf("failed to create team")

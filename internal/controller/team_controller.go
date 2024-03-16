@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	githubv1alpha1 "github.com/eczy/github-operator/api/v1alpha1"
@@ -42,8 +44,9 @@ type TeamRequester interface {
 // TeamReconciler reconciles a Team object
 type TeamReconciler struct {
 	client.Client
-	Scheme       *runtime.Scheme
-	GitHubClient TeamRequester
+	Scheme                   *runtime.Scheme
+	GitHubClient             TeamRequester
+	DeleteOnResourceDeletion bool
 }
 
 //+kubebuilder:rbac:groups=github.github-operator.eczy.io,resources=teams,verbs=get;list;watch;create;update;patch;delete
@@ -71,17 +74,44 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	// fetch team
-	var team githubv1alpha1.Team
-	if err := r.Get(ctx, req.NamespacedName, &team); err != nil {
+	team := &githubv1alpha1.Team{}
+	if err := r.Get(ctx, req.NamespacedName, team); err != nil {
 		log.Error(err, "unable to fetch Team")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// add deletion finalizer if specified
+	finalizerName := "github.github-operator.eczy.io/team-finalizer"
+
+	if r.DeleteOnResourceDeletion {
+		if team.ObjectMeta.DeletionTimestamp.IsZero() {
+			// not being deleted
+			if !controllerutil.ContainsFinalizer(team, finalizerName) {
+				controllerutil.AddFinalizer(team, finalizerName)
+				if err := r.Update(ctx, team); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+		} else {
+			// being deleted
+			if err := r.deleteTeam(ctx, team); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			controllerutil.RemoveFinalizer(team, finalizerName)
+			if err := r.Update(ctx, team); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	// create or fetch team
 	var observed *github.Team
 	// if Status.Id is nil, need to create a new team
+	// TODO: or find the existing one from GitHub
 	if team.Status.Id == nil {
-		created, err := r.createTeam(ctx, &team)
+		log.Info("creating new repository", "name", team.Spec.Name)
+		created, err := r.createTeam(ctx, team)
 		if err != nil {
 			log.Error(err, "unable to create Team")
 			return ctrl.Result{}, err
@@ -99,6 +129,12 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			team.Status.Slug = created.Slug
 		}
 		observed = created
+	} else {
+		existing, err := r.GitHubClient.GetTeamBySlug(ctx, team.Spec.Organization, *team.Status.Slug) // TODO: do this by id
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		observed = existing
 	}
 
 	// update team
@@ -114,8 +150,7 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		needsUpdate = true
 	}
 	if team.Spec.Name != team.GetObjectMeta().GetName() {
-		log.Info("team spec Name does not match metadata Name", "team", team)
-		// TODO handle difference in spec name and metadata name
+		log.Info("team spec Name does not match metadata Name", "spec name", team.Spec.Name, "meta name", team.GetObjectMeta().GetName())
 	}
 
 	// resolve description
@@ -152,10 +187,12 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			log.Error(err, "unable to update team", "team", *observed, "update", updateTeam)
 			return ctrl.Result{}, err
 		}
+		now := v1.Now()
+		team.Status.LastUpdateTimestamp = &now
 	}
 
 	// update status
-	if err := r.Status().Update(ctx, &team); err != nil {
+	if err := r.Status().Update(ctx, team); err != nil {
 		log.Error(err, "unable to update Team status")
 		return ctrl.Result{}, err
 	}
@@ -182,6 +219,10 @@ func (r *TeamReconciler) createTeam(ctx context.Context, team *githubv1alpha1.Te
 	return created, nil
 }
 
+func (r *TeamReconciler) deleteTeam(ctx context.Context, team *githubv1alpha1.Team) error {
+	return r.GitHubClient.DeleteTeamBySlug(ctx, team.Spec.Organization, *team.Status.Slug)
+}
+
 func teamToNewTeam(team *githubv1alpha1.Team) (github.NewTeam, error) {
 	var privacy *string
 	if team.Spec.Privacy != nil {
@@ -189,7 +230,7 @@ func teamToNewTeam(team *githubv1alpha1.Team) (github.NewTeam, error) {
 		privacy = &tmp
 	}
 	newTeam := github.NewTeam{
-		Name:         team.Name,
+		Name:         team.Spec.Name,
 		Description:  team.Spec.Description,
 		ParentTeamID: team.Spec.ParentTeamId,
 		Privacy:      privacy,

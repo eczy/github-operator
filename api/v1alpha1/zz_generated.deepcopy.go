@@ -389,6 +389,11 @@ func (in *TeamSpec) DeepCopyInto(out *TeamSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.Members != nil {
+		in, out := &in.Members, &out.Members
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Maintainers != nil {
 		in, out := &in.Maintainers, &out.Maintainers
 		*out = make([]string, len(*in))
@@ -432,6 +437,40 @@ func (in *TeamStatus) DeepCopyInto(out *TeamStatus) {
 	if in.Slug != nil {
 		in, out := &in.Slug, &out.Slug
 		*out = new(string)
+		**out = **in
+	}
+	if in.LastUpdateTimestamp != nil {
+		in, out := &in.LastUpdateTimestamp, &out.LastUpdateTimestamp
+		*out = (*in).DeepCopy()
+	}
+	if in.Description != nil {
+		in, out := &in.Description, &out.Description
+		*out = new(string)
+		**out = **in
+	}
+	if in.Members != nil {
+		in, out := &in.Members, &out.Members
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.Maintainers != nil {
+		in, out := &in.Maintainers, &out.Maintainers
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.Privacy != nil {
+		in, out := &in.Privacy, &out.Privacy
+		*out = new(Privacy)
+		**out = **in
+	}
+	if in.NotificationSetting != nil {
+		in, out := &in.NotificationSetting, &out.NotificationSetting
+		*out = new(NotificationSetting)
+		**out = **in
+	}
+	if in.ParentTeamId != nil {
+		in, out := &in.ParentTeamId, &out.ParentTeamId
+		*out = new(int64)
 		**out = **in
 	}
 }
