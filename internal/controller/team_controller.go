@@ -65,48 +65,30 @@ type TeamReconciler struct {
 func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	// TODO(user): your logic here
-
 	if r.GitHubClient == nil {
 		err := fmt.Errorf("nil GitHub client")
 		log.Error(err, "reconciler GitHub client is nil")
 		return ctrl.Result{}, err
 	}
 
-	// fetch team
+	// fetch team resource
 	team := &githubv1alpha1.Team{}
 	if err := r.Get(ctx, req.NamespacedName, team); err != nil {
 		log.Error(err, "unable to fetch Team")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// add deletion finalizer if specified
-	finalizerName := "github.github-operator.eczy.io/team-finalizer"
-
-	if r.DeleteOnResourceDeletion {
-		if team.ObjectMeta.DeletionTimestamp.IsZero() {
-			// not being deleted
-			if !controllerutil.ContainsFinalizer(team, finalizerName) {
-				controllerutil.AddFinalizer(team, finalizerName)
-				if err := r.Update(ctx, team); err != nil {
-					return ctrl.Result{}, err
-				}
-			}
-		} else {
-			// being deleted
-			if err := r.deleteTeam(ctx, team); err != nil {
-				return ctrl.Result{}, err
-			}
-
-			controllerutil.RemoveFinalizer(team, finalizerName)
-			if err := r.Update(ctx, team); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
+	// try to fetch external resource
+	observed, err := r.GitHubClient.GetTeamBySlug(ctx, team.Spec.Organization, *team.Status.Slug)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
-	// create or fetch team
-	var observed *github.Team
+	// if team does't exist, check if scheduled for deletion
+	if observed == nil {
+		r.createTeam(ctx, team)
+	}
+
 	// if Status.Id is nil, need to create a new team
 	// TODO: or find the existing one from GitHub
 	if team.Status.Id == nil {
@@ -135,6 +117,31 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 		observed = existing
+	}
+
+	// add deletion finalizer if specified
+	finalizerName := "github.github-operator.eczy.io/team-finalizer"
+
+	if r.DeleteOnResourceDeletion {
+		if team.ObjectMeta.DeletionTimestamp.IsZero() {
+			// not being deleted
+			if !controllerutil.ContainsFinalizer(team, finalizerName) {
+				controllerutil.AddFinalizer(team, finalizerName)
+				if err := r.Update(ctx, team); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+		} else {
+			// being deleted
+			if err := r.deleteTeam(ctx, team); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			controllerutil.RemoveFinalizer(team, finalizerName)
+			if err := r.Update(ctx, team); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	// update team
@@ -207,6 +214,7 @@ func (r *TeamReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+// modifies team in place
 func (r *TeamReconciler) createTeam(ctx context.Context, team *githubv1alpha1.Team) (*github.Team, error) {
 	newTeam, err := teamToNewTeam(team)
 	if err != nil {
@@ -217,6 +225,11 @@ func (r *TeamReconciler) createTeam(ctx context.Context, team *githubv1alpha1.Te
 		return nil, fmt.Errorf("creating GitHub Team: %w", err)
 	}
 	return created, nil
+}
+
+// modifies team and ghTeam in place
+func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Team, ghTeam *github.Team) error {
+	return nil
 }
 
 func (r *TeamReconciler) deleteTeam(ctx context.Context, team *githubv1alpha1.Team) error {
