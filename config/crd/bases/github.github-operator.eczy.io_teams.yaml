@@ -106,11 +106,16 @@ spec:
                 - notifications_enabled
                 - notifications_disabled
                 type: string
-              organization:
+              organization_login:
                 type: string
+              organization_slug:
+                format: int64
+                type: integer
               parent_team_id:
                 format: int64
                 type: integer
+              parent_team_slug:
+                type: string
               privacy:
                 description: Privacy configures the visibility of the team.
                 enum:
@@ -121,7 +126,8 @@ spec:
                 type: string
             required:
             - name
-            - organization
+            - organization_login
+            - organization_slug
             type: object
         type: object
     served: true

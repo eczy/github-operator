@@ -82,7 +82,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 			By("Cleanup the external resource")
-			err = ghClient.DeleteTeamBySlug(ctx, testOrganization, testGitHubResourcePrefix+"team0")
+			err = ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -345,6 +345,27 @@ var _ = Describe("Team Controller", func() {
 			By("Checking the external resource does not exist")
 			_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("should delete a resource when there is no external resource", func() {
+			By("scheduling the resource for deletion")
+			resource := &githubv1alpha1.Team{}
+			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+			now := metav1.Now()
+			resource.SetDeletionTimestamp(&now)
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("deleting the resource")
+			controllerReconciler := &TeamReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

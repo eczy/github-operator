@@ -72,7 +72,8 @@ type TeamStatus struct {
 	Slug                *string      `json:"slug,omitempty"`
 	LastUpdateTimestamp *metav1.Time `json:"last_update_timestamp,omitempty"`
 
-	Organization        string               `json:"organization"`
+	OrganizationLogin   string               `json:"organization_login"`
+	OrganizationSlug    int64                `json:"organization_slug"`
 	Name                string               `json:"name"`
 	Description         *string              `json:"description,omitempty"`
 	Members             []string             `json:"members,omitempty"`
@@ -80,6 +81,7 @@ type TeamStatus struct {
 	Privacy             *Privacy             `json:"privacy,omitempty"`
 	NotificationSetting *NotificationSetting `json:"notification_setting,omitempty"`
 	ParentTeamId        *int64               `json:"parent_team_id,omitempty"`
+	ParentTeamSlug      *string              `json:"parent_team_slug,omitempty"`
 }
 
 //+kubebuilder:object:root=true

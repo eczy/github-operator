@@ -79,49 +79,29 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	// try to fetch external resource
-	observed, err := r.GitHubClient.GetTeamBySlug(ctx, team.Spec.Organization, *team.Status.Slug)
+	observed, err := r.GitHubClient.GetTeamBySlug(ctx, team.Spec.Organization, team.Spec.Name)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// if team does't exist, check if scheduled for deletion
 	if observed == nil {
-		r.createTeam(ctx, team)
+		// if scheduled for deletion
+		if team.ObjectMeta.DeletionTimestamp.IsZero() {
+			// do nothing and return since the external resource doesn't exist
+			return ctrl.Result{}, nil
+		} else {
+			// otherwise create the external resource
+			ghTeam, err := r.createTeam(ctx, team)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			observed = ghTeam
+		}
 	}
 
-	// if Status.Id is nil, need to create a new team
-	// TODO: or find the existing one from GitHub
-	if team.Status.Id == nil {
-		log.Info("creating new repository", "name", team.Spec.Name)
-		created, err := r.createTeam(ctx, team)
-		if err != nil {
-			log.Error(err, "unable to create Team")
-			return ctrl.Result{}, err
-		}
-		if created.ID == nil {
-			log.Error(err, "team ID is nil", "team", created)
-			return ctrl.Result{}, err
-		} else {
-			team.Status.Id = created.ID
-		}
-		if created.Slug == nil {
-			log.Error(err, "team slug is nil", "team", created)
-			return ctrl.Result{}, err
-		} else {
-			team.Status.Slug = created.Slug
-		}
-		observed = created
-	} else {
-		existing, err := r.GitHubClient.GetTeamBySlug(ctx, team.Spec.Organization, *team.Status.Slug) // TODO: do this by id
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		observed = existing
-	}
-
-	// add deletion finalizer if specified
+	// handle finalizer
 	finalizerName := "github.github-operator.eczy.io/team-finalizer"
-
 	if r.DeleteOnResourceDeletion {
 		if team.ObjectMeta.DeletionTimestamp.IsZero() {
 			// not being deleted
@@ -145,62 +125,8 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	// update team
-	updateTeam := github.NewTeam{}
-	needsUpdate := false
-
-	// resolve owner
-	// TODO
-
-	// resolve name
-	if !cmpPtrToValue(observed.Name, team.Spec.Name) {
-		updateTeam.Name = team.Spec.Name
-		needsUpdate = true
-	}
-	if team.Spec.Name != team.GetObjectMeta().GetName() {
-		log.Info("team spec Name does not match metadata Name", "spec name", team.Spec.Name, "meta name", team.GetObjectMeta().GetName())
-	}
-
-	// resolve description
-	if !cmpPtrValues(team.Spec.Description, observed.Description) {
-		updateTeam.Description = team.Spec.Description
-		needsUpdate = true
-	}
-
-	// resolve privacy
-	if !cmpPtrValues(team.Spec.Privacy, (*githubv1alpha1.Privacy)(observed.Privacy)) {
-		updateTeam.Privacy = (*string)(team.Spec.Privacy)
-		needsUpdate = true
-	}
-
-	// resolve parent
-	if observed.Parent != nil {
-		if !cmpPtrValues(team.Spec.ParentTeamId, observed.Parent.ID) {
-			updateTeam.ParentTeamID = team.Spec.ParentTeamId
-			needsUpdate = true
-		}
-	} else {
-		if team.Spec.ParentTeamId != nil {
-			updateTeam.ParentTeamID = team.Spec.ParentTeamId
-			needsUpdate = true
-		}
-	}
-
-	// TODO: team members and maintainers
-
-	// perform update if necessary
-	if needsUpdate {
-		_, err := r.GitHubClient.UpdateTeamById(ctx, *observed.Organization.ID, *team.Status.Id, updateTeam)
-		if err != nil {
-			log.Error(err, "unable to update team", "team", *observed, "update", updateTeam)
-			return ctrl.Result{}, err
-		}
-		now := v1.Now()
-		team.Status.LastUpdateTimestamp = &now
-	}
-
-	// update status
-	if err := r.Status().Update(ctx, team); err != nil {
-		log.Error(err, "unable to update Team status")
+	err = r.updateTeam(ctx, team, observed)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -216,7 +142,7 @@ func (r *TeamReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // modifies team in place
 func (r *TeamReconciler) createTeam(ctx context.Context, team *githubv1alpha1.Team) (*github.Team, error) {
-	newTeam, err := teamToNewTeam(team)
+	newTeam, err := teamResourceToNewTeam(team)
 	if err != nil {
 		return nil, fmt.Errorf("creating github.NewTeam object: %w", err)
 	}
@@ -229,6 +155,93 @@ func (r *TeamReconciler) createTeam(ctx context.Context, team *githubv1alpha1.Te
 
 // modifies team and ghTeam in place
 func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Team, ghTeam *github.Team) error {
+	log := log.FromContext(ctx)
+
+	updateTeam := github.NewTeam{}
+	needsUpdate := false
+
+	// resolve owner
+	// TODO
+
+	// resolve name
+	if team.Spec.Name != ghTeam.GetName() {
+		updateTeam.Name = team.Spec.Name
+		needsUpdate = true
+	}
+	if team.Spec.Name != team.GetObjectMeta().GetName() {
+		log.Info("team spec Name does not match metadata Name", "spec", team.Spec.Name, "metadata", team.GetObjectMeta().GetName())
+	}
+
+	// resolve description
+	if ptrNonNilAndNotEqualTo(team.Spec.Description, ghTeam.GetDescription()) {
+		updateTeam.Description = team.Spec.Description
+		needsUpdate = true
+	}
+
+	// resolve privacy
+	if ptrNonNilAndNotEqualTo(team.Spec.Privacy, githubv1alpha1.Privacy(ghTeam.GetPrivacy())) {
+		updateTeam.Privacy = (*string)(team.Spec.Privacy)
+		needsUpdate = true
+	}
+
+	// resolve parent
+	parent := ghTeam.GetParent()
+	if parent != nil {
+		if ptrNonNilAndNotEqualTo(team.Spec.ParentTeamId, parent.GetID()) {
+			updateTeam.ParentTeamID = team.Spec.ParentTeamId
+			needsUpdate = true
+		} else if team.Spec.ParentTeamId == nil {
+			updateTeam.ParentTeamID = nil
+			needsUpdate = true
+		}
+	} else if team.Spec.ParentTeamId != nil {
+		updateTeam.ParentTeamID = team.Spec.ParentTeamId
+		needsUpdate = true
+	}
+
+	// TODO: team members and maintainers
+
+	// perform update if necessary
+	if needsUpdate {
+		updated, err := r.GitHubClient.UpdateTeamById(ctx, *ghTeam.Organization.ID, *ghTeam.ID, updateTeam)
+		if err != nil {
+			log.Error(err, "unable to update team", "name", team.Spec.Name)
+			return err
+		}
+		ghTeam = updated
+
+		now := v1.Now()
+		parent := ghTeam.GetParent()
+		var parentId *int64
+		var parentSlug *string
+		if parent != nil {
+			parentId = parent.ID
+			parentSlug = parent.Slug
+		}
+		team.Status = githubv1alpha1.TeamStatus{
+			Id:                  ghTeam.ID,
+			Slug:                ghTeam.Slug,
+			LastUpdateTimestamp: &now,
+			OrganizationLogin:   ghTeam.GetOrganization().GetLogin(),
+			OrganizationSlug:    ghTeam.GetOrganization().GetID(),
+			Name:                ghTeam.GetName(),
+			Description:         ghTeam.Description,
+			// TODO
+			// Members:             []string{},
+			// Maintainers:         []string{},
+			Privacy: (*githubv1alpha1.Privacy)(ghTeam.Privacy),
+			// TODO
+			// NotificationSetting: &"",
+			ParentTeamId:   parentId,
+			ParentTeamSlug: parentSlug,
+		}
+
+		// update status
+		if err := r.Status().Update(ctx, team); err != nil {
+			log.Error(err, "unable to update Team status", "name", team.Spec.Name)
+		}
+	}
+
 	return nil
 }
 
@@ -236,7 +249,8 @@ func (r *TeamReconciler) deleteTeam(ctx context.Context, team *githubv1alpha1.Te
 	return r.GitHubClient.DeleteTeamBySlug(ctx, team.Spec.Organization, *team.Status.Slug)
 }
 
-func teamToNewTeam(team *githubv1alpha1.Team) (github.NewTeam, error) {
+// teamResourceToNewTeam creates a github.NewTeam instance from a Team resource
+func teamResourceToNewTeam(team *githubv1alpha1.Team) (github.NewTeam, error) {
 	var privacy *string
 	if team.Spec.Privacy != nil {
 		tmp := string(*team.Spec.Privacy)
@@ -249,21 +263,4 @@ func teamToNewTeam(team *githubv1alpha1.Team) (github.NewTeam, error) {
 		Privacy:      privacy,
 	}
 	return newTeam, nil
-}
-
-func cmpPtrValues[T comparable](a *T, b *T) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return *a == *b
-}
-
-func cmpPtrToValue[T comparable](a *T, b T) bool {
-	if a == nil {
-		return false
-	}
-	return *a == b
 }
