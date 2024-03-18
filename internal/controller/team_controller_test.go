@@ -270,7 +270,10 @@ var _ = Describe("Team Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking the external resource")
-			ghTeam, err := ghClient.GetTeamBySlug(ctx, testOrganization, newName)
+			err = k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+
+			ghTeam, err := ghClient.GetTeamBySlug(ctx, testOrganization, *resource.Status.Slug)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ghTeam.Name).NotTo(BeNil())
 			Expect(*ghTeam.Name).To(Equal(newName))
