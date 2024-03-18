@@ -196,8 +196,9 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 	// TODO
 
 	// resolve name
+	// name can never be blank
+	updateTeam.Name = team.Spec.Name
 	if team.Spec.Name != ghTeam.GetName() {
-		updateTeam.Name = team.Spec.Name
 		needsUpdate = true
 	}
 	if team.Spec.Name != team.GetObjectMeta().GetName() {

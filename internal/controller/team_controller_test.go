@@ -243,7 +243,7 @@ var _ = Describe("Team Controller", func() {
 		})
 
 		It("should successfully reconcile an updated resource's name", func() {
-			By("Reconciling the resource (1/2)")
+			By("Reconciling the resource (1/3)")
 			controllerReconciler := &TeamReconciler{
 				Client:       k8sClient,
 				Scheme:       k8sClient.Scheme(),
@@ -260,15 +260,39 @@ var _ = Describe("Team Controller", func() {
 			err = k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
+			originalName := resource.Spec.Name
 			newName := ghResourcePrefix + "team1"
 			resource.Spec.Name = newName
-			firstUpdateTimestamp := resource.Status.LastUpdateTimestamp
-			Expect(firstUpdateTimestamp).ToNot(BeNil())
+			previousUpdateTimestamp := resource.Status.LastUpdateTimestamp
+			Expect(previousUpdateTimestamp).ToNot(BeNil())
 
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
-			By("Reconciling the resource (2/2)")
-			time.Sleep(1 * time.Second)
+			By("Reconciling the resource (2/3)")
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the resource Status")
+			time.Sleep(1 * time.Second) // so that we can detect changes in last update timestamp
+			err = k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resource.Status.LastUpdateTimestamp.After(previousUpdateTimestamp.Time)).To(BeTrue())
+			previousUpdateTimestamp = resource.Status.LastUpdateTimestamp
+
+			By("Checking the external resource")
+			ghTeam, err := ghClient.GetTeamBySlug(ctx, testOrganization, *resource.Status.Slug)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ghTeam.Name).NotTo(BeNil())
+			Expect(*ghTeam.Name).To(Equal(newName))
+
+			By("Restoring the resource Spec.Name")
+			resource.Spec.Name = originalName
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Reconciling the resource (3/3)")
+			time.Sleep(1 * time.Second) // so that we can detect changes in last update timestamp
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
@@ -277,15 +301,13 @@ var _ = Describe("Team Controller", func() {
 			By("Checking the resource Status")
 			err = k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.LastUpdateTimestamp.After(firstUpdateTimestamp.Time)).To(BeTrue())
-			Expect(resource.Status.Name).NotTo(BeNil())
-			Expect(*resource.Status.Name).To(Equal(newName))
+			Expect(resource.Status.LastUpdateTimestamp.After(previousUpdateTimestamp.Time)).To(BeTrue())
 
 			By("Checking the external resource")
-			ghTeam, err := ghClient.GetTeamBySlug(ctx, testOrganization, *resource.Status.Slug)
+			ghTeam, err = ghClient.GetTeamBySlug(ctx, testOrganization, *resource.Status.Slug)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ghTeam.Name).NotTo(BeNil())
-			Expect(*ghTeam.Name).To(Equal(newName))
+			Expect(*ghTeam.Name).To(Equal(originalName))
 		})
 		// TODO: other fields
 	})
