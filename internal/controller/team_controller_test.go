@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"log"
+	"os"
 	"time"
 
 	"github.com/google/go-github/v60/github"
@@ -33,7 +35,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var testDeletionGracePeriod int64 = 10 // arbitrary, set higher if necessary
+var (
+	deletionGracePeriod int64  = 5
+	testOrganization    string = "testorg"
+)
+
+// func init() {
+// 	flag.Int64Var(&deletionGracePeriod, "deletion-grace-period", 5, "Test resource deletion grace period (seconds). Only used when testing finalizers,.")
+// 	flag.StringVar(&testOrganization, "organization", "testorg", "GitHub organization against which tests will be run.")
+// 	flag.Parse()
+// }
 
 var _ = Describe("Team Controller", func() {
 	const resourceName = "test-resource"
@@ -46,18 +57,30 @@ var _ = Describe("Team Controller", func() {
 	}
 	team := &githubv1alpha1.Team{}
 
-	testGitHubResourcePrefix := "github-operator-test-"
-	testOrganization := "testorg"
-	testTeamName := testGitHubResourcePrefix + "team0"
-	// TODO: set this from env
-	mock := true
-	var ghClient *TestGitHubClient
-	if mock {
-		ghClient = NewTestGitHubClient(WithTestOrganization(*NewTestOrganization(testOrganization, 0)))
-	} else {
-		// TODO: real github client with creds
-		ghClient = NewTestGitHubClient()
+	ghResourcePrefix := "github-operator-test-"
+	testTeamName := ghResourcePrefix + "team0"
+	org, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
+	if ok {
+		testOrganization = org
 	}
+
+	var ghClient GitHubRequester
+	creds, err := GitHubCredentialsFromEnv()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if creds.HasCredentials() {
+		client, err := NewGitHubClientFromCredentials(ctx, creds)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ghClient = client
+	} else {
+		client := NewTestGitHubClient()
+		client.CreateOrganization(ctx, testOrganization)
+		ghClient = client
+	}
+
 	Context("When creating a resource", func() {
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Team")
@@ -145,7 +168,10 @@ var _ = Describe("Team Controller", func() {
 			By("Checking the matching external resource is now managed")
 			_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(ghClient.OrgsBySlug[testOrganization].TeamBySlug)).To(Equal(1))
+			// TODO: find a way to test this with  actual GitHub client without list all
+			if c, ok := ghClient.(*TestGitHubClient); ok {
+				Expect(len(c.OrgsBySlug[testOrganization].TeamBySlug)).To(Equal(1))
+			}
 		})
 	})
 	Context("When updating a resource", func() {
@@ -234,7 +260,7 @@ var _ = Describe("Team Controller", func() {
 			err = k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			newName := testGitHubResourcePrefix + "team1"
+			newName := ghResourcePrefix + "team1"
 			resource.Spec.Name = newName
 			firstUpdateTimestamp := resource.Status.LastUpdateTimestamp
 			Expect(firstUpdateTimestamp).ToNot(BeNil())
@@ -322,7 +348,7 @@ var _ = Describe("Team Controller", func() {
 
 			By("Deleting the resource")
 			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
-				GracePeriodSeconds: &testDeletionGracePeriod,
+				GracePeriodSeconds: &deletionGracePeriod,
 			})).To(Succeed())
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -347,7 +373,7 @@ var _ = Describe("Team Controller", func() {
 
 			By("Deleting the resource")
 			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
-				GracePeriodSeconds: &testDeletionGracePeriod,
+				GracePeriodSeconds: &deletionGracePeriod,
 			})).To(Succeed())
 			controllerReconciler := &TeamReconciler{
 				Client:                   k8sClient,
@@ -379,7 +405,7 @@ var _ = Describe("Team Controller", func() {
 			err = k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
-				GracePeriodSeconds: &testDeletionGracePeriod,
+				GracePeriodSeconds: &deletionGracePeriod,
 			})).To(Succeed())
 			controllerReconciler := &TeamReconciler{
 				Client:                   k8sClient,

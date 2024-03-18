@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/google/go-github/v60/github"
 )
@@ -12,6 +13,22 @@ type Client struct {
 }
 
 type ClientOption = func(*Client) error
+
+func WithRoundTripper(rt http.RoundTripper) ClientOption {
+	return func(c *Client) error {
+		c.rest = github.NewClient(&http.Client{
+			Transport: rt,
+		})
+		return nil
+	}
+}
+
+func WithHttpClient(client *http.Client) ClientOption {
+	return func(c *Client) error {
+		c.rest = github.NewClient(client)
+		return nil
+	}
+}
 
 func NewClient(opts ...ClientOption) (*Client, error) {
 	client := &Client{

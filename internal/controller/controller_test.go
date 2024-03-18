@@ -29,8 +29,9 @@ func NewTestOrganization(slug string, id int64) *TestOrganization {
 }
 
 type TestGitHubClient struct {
-	OrgsBySlug map[string]*TestOrganization
-	OrgsById   map[int64]*TestOrganization
+	OrgsBySlug   map[string]*TestOrganization
+	OrgsById     map[int64]*TestOrganization
+	OrgIdCounter int64
 }
 
 type TestGitHubClientOption = func(*TestGitHubClient)
@@ -51,6 +52,16 @@ func NewTestGitHubClient(opts ...TestGitHubClientOption) *TestGitHubClient {
 		opt(client)
 	}
 	return client
+}
+
+func (tghc *TestGitHubClient) CreateOrganization(ctx context.Context, login string) error {
+	if _, ok := tghc.OrgsBySlug[login]; !ok {
+		org := NewTestOrganization(login, tghc.OrgIdCounter)
+		tghc.OrgsBySlug[login] = org
+		tghc.OrgsById[tghc.OrgIdCounter] = org
+		tghc.OrgIdCounter += 1
+	}
+	return nil
 }
 
 // TeamRequester
