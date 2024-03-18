@@ -72,9 +72,9 @@ type TeamStatus struct {
 	Slug                *string      `json:"slug,omitempty"`
 	LastUpdateTimestamp *metav1.Time `json:"last_update_timestamp,omitempty"`
 
-	OrganizationLogin   string               `json:"organization_login"`
-	OrganizationSlug    int64                `json:"organization_slug"`
-	Name                string               `json:"name"`
+	OrganizationLogin   *string              `json:"organization_login,omitempty"`
+	OrganizationId      *int64               `json:"organization_slug,omitempty"`
+	Name                *string              `json:"name,omitempty"`
 	Description         *string              `json:"description,omitempty"`
 	Members             []string             `json:"members,omitempty"`
 	Maintainers         []string             `json:"maintainers,omitempty"`

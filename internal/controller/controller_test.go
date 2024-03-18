@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	gh "github.com/eczy/github-operator/internal/github"
 	"github.com/google/go-github/v60/github"
 )
 
@@ -61,19 +62,29 @@ func (tghc *TestGitHubClient) GetTeamBySlug(ctx context.Context, org string, slu
 		}
 		if team, ok := organization.TeamBySlug[slug]; ok {
 			return team, nil
+		} else {
+			return nil, &gh.TeamNotFoundError{
+				OrgSlug:  github.String(org),
+				TeamSlug: github.String(slug),
+			}
 		}
 	}
 	return nil, errMsg
 }
 
-func (tghc *TestGitHubClient) GetTeamById(ctx context.Context, org int64, teamId int64) (*github.Team, error) {
-	errMsg := fmt.Errorf("no team with id '%d' in org '%d'", teamId, org)
-	if org, ok := tghc.OrgsById[org]; ok {
-		if org.TeamBySlug == nil {
-			return nil, errMsg
+func (tghc *TestGitHubClient) GetTeamById(ctx context.Context, orgId int64, teamId int64) (*github.Team, error) {
+	errMsg := fmt.Errorf("no team with id '%d' in org '%d'", teamId, orgId)
+	if organization, ok := tghc.OrgsById[orgId]; ok {
+		if organization.TeamById == nil {
+			return nil, nil
 		}
-		if team, ok := org.TeamById[teamId]; ok {
+		if team, ok := organization.TeamById[teamId]; ok {
 			return team, nil
+		} else {
+			return nil, &gh.TeamNotFoundError{
+				OrgId:  github.Int64(orgId),
+				TeamId: github.Int64(teamId),
+			}
 		}
 	}
 	return nil, errMsg

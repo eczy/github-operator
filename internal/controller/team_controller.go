@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	githubv1alpha1 "github.com/eczy/github-operator/api/v1alpha1"
+	gh "github.com/eczy/github-operator/internal/github"
 	"github.com/google/go-github/v60/github"
 )
 
@@ -74,26 +75,46 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// fetch team resource
 	team := &githubv1alpha1.Team{}
 	if err := r.Get(ctx, req.NamespacedName, team); err != nil {
-		log.Error(err, "unable to fetch Team")
+		log.Error(err, "unable to fetch Team resource")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	var observed *github.Team
 	// try to fetch external resource
-	observed, err := r.GitHubClient.GetTeamBySlug(ctx, team.Spec.Organization, team.Spec.Name)
-	if err != nil {
-		return ctrl.Result{}, err
+	if team.Status.OrganizationId != nil && team.Status.Id != nil {
+		log.Info("getting team", "id", *team.Status.Id)
+		ghTeam, err := r.GitHubClient.GetTeamById(ctx, *team.Status.OrganizationId, *team.Status.Id)
+		if _, ok := err.(*gh.TeamNotFoundError); ok {
+			log.Info(err.Error())
+		} else if err != nil {
+			log.Error(err, "unable to get team")
+			return ctrl.Result{}, err
+		}
+		observed = ghTeam
+	} else {
+		log.Info("getting team", "name", team.Spec.Name)
+		ghTeam, err := r.GitHubClient.GetTeamBySlug(ctx, team.Spec.Organization, team.Spec.Name)
+		if _, ok := err.(*gh.TeamNotFoundError); ok {
+			log.Info(err.Error())
+		} else if err != nil {
+			log.Error(err, "unable to get team")
+			return ctrl.Result{}, err
+		}
+		observed = ghTeam
 	}
 
 	// if team does't exist, check if scheduled for deletion
 	if observed == nil {
 		// if scheduled for deletion
-		if team.ObjectMeta.DeletionTimestamp.IsZero() {
+		if !team.ObjectMeta.DeletionTimestamp.IsZero() {
 			// do nothing and return since the external resource doesn't exist
 			return ctrl.Result{}, nil
 		} else {
 			// otherwise create the external resource
+			log.Info("creating team", "name", team.Spec.Name)
 			ghTeam, err := r.createTeam(ctx, team)
 			if err != nil {
+				log.Error(err, "unable to create GitHub Team", "name", team.Spec.Name)
 				return ctrl.Result{}, err
 			}
 			observed = ghTeam
@@ -113,6 +134,7 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 		} else {
 			// being deleted
+			log.Info("deleting team", "slug", team.Status.Slug)
 			if err := r.deleteTeam(ctx, team); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -125,7 +147,7 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	// update team
-	err = r.updateTeam(ctx, team, observed)
+	err := r.updateTeam(ctx, team, observed)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -203,6 +225,7 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 
 	// perform update if necessary
 	if needsUpdate {
+		log.Info("updating team", "name", team.Spec.Name)
 		updated, err := r.GitHubClient.UpdateTeamById(ctx, *ghTeam.Organization.ID, *ghTeam.ID, updateTeam)
 		if err != nil {
 			log.Error(err, "unable to update team", "name", team.Spec.Name)
@@ -222,9 +245,9 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 			Id:                  ghTeam.ID,
 			Slug:                ghTeam.Slug,
 			LastUpdateTimestamp: &now,
-			OrganizationLogin:   ghTeam.GetOrganization().GetLogin(),
-			OrganizationSlug:    ghTeam.GetOrganization().GetID(),
-			Name:                ghTeam.GetName(),
+			OrganizationLogin:   github.String(ghTeam.GetOrganization().GetLogin()),
+			OrganizationId:      github.Int64(ghTeam.GetOrganization().GetID()),
+			Name:                ghTeam.Name,
 			Description:         ghTeam.Description,
 			// TODO
 			// Members:             []string{},

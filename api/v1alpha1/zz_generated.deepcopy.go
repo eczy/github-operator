@@ -443,6 +443,21 @@ func (in *TeamStatus) DeepCopyInto(out *TeamStatus) {
 		in, out := &in.LastUpdateTimestamp, &out.LastUpdateTimestamp
 		*out = (*in).DeepCopy()
 	}
+	if in.OrganizationLogin != nil {
+		in, out := &in.OrganizationLogin, &out.OrganizationLogin
+		*out = new(string)
+		**out = **in
+	}
+	if in.OrganizationId != nil {
+		in, out := &in.OrganizationId, &out.OrganizationId
+		*out = new(int64)
+		**out = **in
+	}
+	if in.Name != nil {
+		in, out := &in.Name, &out.Name
+		*out = new(string)
+		**out = **in
+	}
 	if in.Description != nil {
 		in, out := &in.Description, &out.Description
 		*out = new(string)

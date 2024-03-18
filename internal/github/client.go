@@ -34,7 +34,10 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 func (c *Client) GetTeamBySlug(ctx context.Context, org, slug string) (*github.Team, error) {
 	team, resp, err := c.rest.Teams.GetTeamBySlug(ctx, org, slug)
 	if resp.StatusCode == 404 {
-		return nil, nil
+		return nil, &TeamNotFoundError{
+			OrgSlug:  github.String(org),
+			TeamSlug: github.String(slug),
+		}
 	} else if err != nil {
 		return nil, fmt.Errorf("getting GitHub team: %w", err)
 	}
@@ -44,7 +47,10 @@ func (c *Client) GetTeamBySlug(ctx context.Context, org, slug string) (*github.T
 func (c *Client) GetTeamById(ctx context.Context, org, teamId int64) (*github.Team, error) {
 	team, resp, err := c.rest.Teams.GetTeamByID(ctx, org, teamId)
 	if resp.StatusCode == 404 {
-		return nil, nil
+		return nil, &TeamNotFoundError{
+			OrgId:  github.Int64(org),
+			TeamId: github.Int64(teamId),
+		}
 	} else if err != nil {
 		return nil, fmt.Errorf("getting GitHub team: %w", err)
 	}

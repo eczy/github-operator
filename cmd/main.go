@@ -36,6 +36,7 @@ import (
 
 	githubv1alpha1 "github.com/eczy/github-operator/api/v1alpha1"
 	"github.com/eczy/github-operator/internal/controller"
+	gh "github.com/eczy/github-operator/internal/github"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -120,6 +121,9 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
+
+	// TODO: setup github client
+	_, err = gh.NewClient()
 
 	if err = (&controller.TeamReconciler{
 		Client: mgr.GetClient(),

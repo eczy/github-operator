@@ -124,10 +124,6 @@ spec:
                 type: string
               slug:
                 type: string
-            required:
-            - name
-            - organization_login
-            - organization_slug
             type: object
         type: object
     served: true
