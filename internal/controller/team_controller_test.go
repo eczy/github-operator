@@ -25,11 +25,15 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	githubv1alpha1 "github.com/eczy/github-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var testDeletionGracePeriod int64 = 10 // arbitrary, set higher if necessary
 
 var _ = Describe("Team Controller", func() {
 	const resourceName = "test-resource"
@@ -262,117 +266,131 @@ var _ = Describe("Team Controller", func() {
 
 	// TODO: test deletion
 
-	// Context("When deleting a resource", func() {
-	// 	BeforeEach(func() {
-	// 		By("creating the custom resource for the Kind Team")
-	// 		err := k8sClient.Get(ctx, typeNamespacedName, team)
-	// 		if err != nil && errors.IsNotFound(err) {
-	// 			resource := &githubv1alpha1.Team{
-	// 				ObjectMeta: metav1.ObjectMeta{
-	// 					Name:      resourceName,
-	// 					Namespace: "default",
-	// 				},
-	// 				Spec: githubv1alpha1.TeamSpec{
-	// 					Organization: testOrganization,
-	// 					Name:         testTeamName,
-	// 				},
-	// 			}
-	// 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-	// 		}
+	Context("When deleting a resource", func() {
+		BeforeEach(func() {
+			By("Creating the custom resource for the Kind Team")
+			err := k8sClient.Get(ctx, typeNamespacedName, team)
+			if err != nil && errors.IsNotFound(err) {
+				resource := &githubv1alpha1.Team{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceName,
+						Namespace: "default",
+					},
+					Spec: githubv1alpha1.TeamSpec{
+						Organization: testOrganization,
+						Name:         testTeamName,
+					},
+				}
+				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			}
 
-	// 		By("creating the corresponding external resource")
-	// 		_, err = ghClient.CreateTeam(ctx, testOrganization, github.NewTeam{
-	// 			Name: testTeamName,
-	// 		})
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 	})
+			By("Creating the corresponding external resource")
+			_, err = ghClient.CreateTeam(ctx, testOrganization, github.NewTeam{
+				Name: testTeamName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
 
-	// 	AfterEach(func() {
-	// 		resource := &githubv1alpha1.Team{}
-	// 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
-	// 		Expect(err).NotTo(HaveOccurred())
+		AfterEach(func() {
+			By("Check the specific resource instance Team is deleted")
+			resource := &githubv1alpha1.Team{}
+			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).To(HaveOccurred())
+		})
 
-	// 		By("Cleanup the specific resource instance Team")
-	// 		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-	// 	})
+		It("should delete a resource and the associated external resource", func() {
+			// when associated before deletion
+			By("Associating the resource with the external resource")
+			controllerReconciler := &TeamReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				GitHubClient:             ghClient,
+				DeleteOnResourceDeletion: true,
+			}
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
 
-	// 	It("should delete a resource and the associated external resource", func() {
-	// 		// when associated before deletion
-	// 		By("associating the resource with the external resource")
-	// 		controllerReconciler := &TeamReconciler{
-	// 			Client:       k8sClient,
-	// 			Scheme:       k8sClient.Scheme(),
-	// 			GitHubClient: ghClient,
-	// 		}
-	// 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-	// 			NamespacedName: typeNamespacedName,
-	// 		})
-	// 		Expect(err).NotTo(HaveOccurred())
+			By("Scheduling the resource for deletion")
+			resource := &githubv1alpha1.Team{}
+			err = k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+			// manually add finalizer
+			controllerutil.AddFinalizer(resource, teamFinalizerName)
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
-	// 		By("scheduling the resource for deletion")
-	// 		resource := &githubv1alpha1.Team{}
-	// 		err = k8sClient.Get(ctx, typeNamespacedName, resource)
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 		now := metav1.Now()
-	// 		resource.SetDeletionTimestamp(&now)
-	// 		Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+			By("Deleting the resource")
+			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
+				GracePeriodSeconds: &testDeletionGracePeriod,
+			})).To(Succeed())
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
 
-	// 		By("deleting the resource")
-	// 		_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
-	// 			NamespacedName: typeNamespacedName,
-	// 		})
-	// 		Expect(err).NotTo(HaveOccurred())
+			By("Checking the external resource does not exist")
+			_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
+			Expect(err).To(HaveOccurred())
+		})
 
-	// 		By("Checking the external resource does not exist")
-	// 		_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
-	// 		Expect(err).To(HaveOccurred())
-	// 	})
+		It("should delete a resource without affecting an unassociated external resource", func() {
+			// i.e. if we are deleting on the first reconciliation of a resource, don't touch
+			// external state
+			By("Scheduling the resource for deletion")
+			resource := &githubv1alpha1.Team{}
+			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+			// manually add finalizer
+			controllerutil.AddFinalizer(resource, teamFinalizerName)
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
-	// 	It("should delete a resource and the previously unassociated external resource", func() {
-	// 		// when NOT associated before deletion
-	// 		By("scheduling the resource for deletion")
-	// 		resource := &githubv1alpha1.Team{}
-	// 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 		now := metav1.Now()
-	// 		resource.SetDeletionTimestamp(&now)
-	// 		Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+			By("Deleting the resource")
+			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
+				GracePeriodSeconds: &testDeletionGracePeriod,
+			})).To(Succeed())
+			controllerReconciler := &TeamReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				GitHubClient:             ghClient,
+				DeleteOnResourceDeletion: true,
+			}
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
 
-	// 		By("deleting the resource")
-	// 		controllerReconciler := &TeamReconciler{
-	// 			Client:       k8sClient,
-	// 			Scheme:       k8sClient.Scheme(),
-	// 			GitHubClient: ghClient,
-	// 		}
-	// 		_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
-	// 			NamespacedName: typeNamespacedName,
-	// 		})
-	// 		Expect(err).NotTo(HaveOccurred())
+			By("Checking the external resource still exists")
+			_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
+			Expect(err).NotTo(HaveOccurred())
 
-	// 		By("Checking the external resource does not exist")
-	// 		_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
-	// 		Expect(err).To(HaveOccurred())
-	// 	})
+			By("Cleaning up the external resource")
+			err = ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)
+			Expect(err).NotTo(HaveOccurred(), "this may change if BeforeEach is modified")
+		})
 
-	// 	It("should delete a resource when there is no external resource", func() {
-	// 		By("scheduling the resource for deletion")
-	// 		resource := &githubv1alpha1.Team{}
-	// 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 		now := metav1.Now()
-	// 		resource.SetDeletionTimestamp(&now)
-	// 		Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+		It("should delete a resource when there is no external resource", func() {
+			By("Checking there is no matching external resource")
+			err := ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)
+			Expect(err).NotTo(HaveOccurred(), "this may change if BeforeEach is modified")
 
-	// 		By("deleting the resource")
-	// 		controllerReconciler := &TeamReconciler{
-	// 			Client:       k8sClient,
-	// 			Scheme:       k8sClient.Scheme(),
-	// 			GitHubClient: ghClient,
-	// 		}
-	// 		_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
-	// 			NamespacedName: typeNamespacedName,
-	// 		})
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 	})
-	// })
+			By("Deleting the resource")
+			resource := &githubv1alpha1.Team{}
+			err = k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
+				GracePeriodSeconds: &testDeletionGracePeriod,
+			})).To(Succeed())
+			controllerReconciler := &TeamReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				GitHubClient:             ghClient,
+				DeleteOnResourceDeletion: true,
+			}
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
 })

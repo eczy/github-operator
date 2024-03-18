@@ -32,6 +32,10 @@ import (
 	"github.com/google/go-github/v60/github"
 )
 
+var (
+	teamFinalizerName = "github.github-operator.eczy.io/team-finalizer"
+)
+
 type TeamRequester interface {
 	GetTeamBySlug(ctx context.Context, org, slug string) (*github.Team, error)
 	GetTeamById(ctx context.Context, org, teamId int64) (*github.Team, error)
@@ -122,12 +126,11 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	// handle finalizer
-	finalizerName := "github.github-operator.eczy.io/team-finalizer"
 	if r.DeleteOnResourceDeletion {
 		if team.ObjectMeta.DeletionTimestamp.IsZero() {
 			// not being deleted
-			if !controllerutil.ContainsFinalizer(team, finalizerName) {
-				controllerutil.AddFinalizer(team, finalizerName)
+			if !controllerutil.ContainsFinalizer(team, teamFinalizerName) {
+				controllerutil.AddFinalizer(team, teamFinalizerName)
 				if err := r.Update(ctx, team); err != nil {
 					return ctrl.Result{}, err
 				}
@@ -135,14 +138,21 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		} else {
 			// being deleted
 			log.Info("deleting team", "slug", team.Status.Slug)
-			if err := r.deleteTeam(ctx, team); err != nil {
-				return ctrl.Result{}, err
+			if team.Status.LastUpdateTimestamp != nil {
+				// if we have never resolved this resource before, don't
+				// touch external state
+				if err := r.deleteTeam(ctx, team); err != nil {
+					log.Error(err, "unable to delete team")
+					return ctrl.Result{}, err
+				}
 			}
 
-			controllerutil.RemoveFinalizer(team, finalizerName)
+			controllerutil.RemoveFinalizer(team, teamFinalizerName)
 			if err := r.Update(ctx, team); err != nil {
 				return ctrl.Result{}, err
 			}
+
+			return ctrl.Result{}, nil
 		}
 	}
 
@@ -224,7 +234,7 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 	// TODO: team members and maintainers
 
 	// perform update if necessary
-	if needsUpdate {
+	if needsUpdate || team.Status.LastUpdateTimestamp == nil {
 		log.Info("updating team", "name", team.Spec.Name)
 		updated, err := r.GitHubClient.UpdateTeamById(ctx, *ghTeam.Organization.ID, *ghTeam.ID, updateTeam)
 		if err != nil {
@@ -269,7 +279,13 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 }
 
 func (r *TeamReconciler) deleteTeam(ctx context.Context, team *githubv1alpha1.Team) error {
-	return r.GitHubClient.DeleteTeamBySlug(ctx, team.Spec.Organization, *team.Status.Slug)
+	if team.Status.OrganizationLogin == nil {
+		return fmt.Errorf("team OrganizationLogin nil")
+	}
+	if team.Status.Slug == nil {
+		return fmt.Errorf("team Slug is nil")
+	}
+	return r.GitHubClient.DeleteTeamBySlug(ctx, *team.Status.OrganizationLogin, *team.Status.Slug)
 }
 
 // teamResourceToNewTeam creates a github.NewTeam instance from a Team resource

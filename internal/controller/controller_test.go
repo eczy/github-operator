@@ -11,7 +11,7 @@ import (
 var _ GitHubRequester = &TestGitHubClient{}
 
 type TestOrganization struct {
-	Slug          string
+	Login         string
 	Id            int64
 	TeamById      map[int64]*github.Team
 	TeamBySlug    map[string]*github.Team
@@ -20,7 +20,7 @@ type TestOrganization struct {
 
 func NewTestOrganization(slug string, id int64) *TestOrganization {
 	return &TestOrganization{
-		Slug:          slug,
+		Login:         slug,
 		Id:            id,
 		TeamById:      map[int64]*github.Team{},
 		TeamBySlug:    map[string]*github.Team{},
@@ -38,7 +38,7 @@ type TestGitHubClientOption = func(*TestGitHubClient)
 func WithTestOrganization(org TestOrganization) TestGitHubClientOption {
 	return func(tghc *TestGitHubClient) {
 		tghc.OrgsById[org.Id] = &org
-		tghc.OrgsBySlug[org.Slug] = &org
+		tghc.OrgsBySlug[org.Login] = &org
 	}
 }
 
@@ -103,8 +103,8 @@ func (tghc *TestGitHubClient) CreateTeam(ctx context.Context, org string, newTea
 			Name:        &newTeam.Name,
 			Description: newTeam.Description,
 			Organization: &github.Organization{
-				Name: github.String(org),
-				ID:   github.Int64(organization.Id),
+				Login: github.String(organization.Login),
+				ID:    github.Int64(organization.Id),
 			},
 			Slug: &newTeam.Name,
 		}
