@@ -199,6 +199,7 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 	// name can never be blank
 	updateTeam.Name = team.Spec.Name
 	if team.Spec.Name != ghTeam.GetName() {
+		log.Info("name needs update", "from", ghTeam.GetName(), "to", team.Spec.Name)
 		needsUpdate = true
 	}
 	if team.Spec.Name != team.GetObjectMeta().GetName() {
@@ -209,12 +210,16 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 	if ptrNonNilAndNotEqualTo(team.Spec.Description, ghTeam.GetDescription()) {
 		updateTeam.Description = team.Spec.Description
 		needsUpdate = true
+		log.Info("description needs update", "from", ghTeam.GetDescription(), "to", *team.Spec.Description)
+
 	}
 
 	// resolve privacy
 	if ptrNonNilAndNotEqualTo(team.Spec.Privacy, githubv1alpha1.Privacy(ghTeam.GetPrivacy())) {
 		updateTeam.Privacy = (*string)(team.Spec.Privacy)
 		needsUpdate = true
+		log.Info("privacy needs update", "from", githubv1alpha1.Privacy(ghTeam.GetPrivacy()), "to", *team.Spec.Privacy)
+
 	}
 
 	// resolve parent
@@ -223,13 +228,17 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 		if ptrNonNilAndNotEqualTo(team.Spec.ParentTeamId, parent.GetID()) {
 			updateTeam.ParentTeamID = team.Spec.ParentTeamId
 			needsUpdate = true
+			log.Info("parent needs update", "from", parent.GetID(), "to", team.Spec.ParentTeamId)
+
 		} else if team.Spec.ParentTeamId == nil {
 			updateTeam.ParentTeamID = nil
 			needsUpdate = true
+			log.Info("parent needs update", "from", parent.GetID(), "to", team.Spec.ParentTeamId)
 		}
 	} else if team.Spec.ParentTeamId != nil {
 		updateTeam.ParentTeamID = team.Spec.ParentTeamId
 		needsUpdate = true
+		log.Info("parent needs update", "from", nil, "to", team.Spec.ParentTeamId)
 	}
 
 	// TODO: team members and maintainers

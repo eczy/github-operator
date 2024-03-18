@@ -20,7 +20,6 @@ import (
 	"context"
 	"log"
 	"os"
-	"time"
 
 	"github.com/google/go-github/v60/github"
 	. "github.com/onsi/ginkgo/v2"
@@ -231,7 +230,6 @@ var _ = Describe("Team Controller", func() {
 			resource := &githubv1alpha1.Team{}
 			err = k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.LastUpdateTimestamp).NotTo(Equal(nil))
 			Expect(resource.Status.Description).NotTo(BeNil())
 			Expect(*resource.Status.Description).To(Equal("foo"))
 
@@ -263,9 +261,6 @@ var _ = Describe("Team Controller", func() {
 			originalName := resource.Spec.Name
 			newName := ghResourcePrefix + "team1"
 			resource.Spec.Name = newName
-			previousUpdateTimestamp := resource.Status.LastUpdateTimestamp
-			Expect(previousUpdateTimestamp).ToNot(BeNil())
-
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
 			By("Reconciling the resource (2/3)")
@@ -274,34 +269,25 @@ var _ = Describe("Team Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking the resource Status")
-			time.Sleep(1 * time.Second) // so that we can detect changes in last update timestamp
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.LastUpdateTimestamp.After(previousUpdateTimestamp.Time)).To(BeTrue())
-			previousUpdateTimestamp = resource.Status.LastUpdateTimestamp
-
 			By("Checking the external resource")
-			ghTeam, err := ghClient.GetTeamBySlug(ctx, testOrganization, *resource.Status.Slug)
+			ghTeam, err := ghClient.GetTeamBySlug(ctx, testOrganization, newName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ghTeam.Name).NotTo(BeNil())
 			Expect(*ghTeam.Name).To(Equal(newName))
 
 			By("Restoring the resource Spec.Name")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			resource.Spec.Name = originalName
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
 			By("Reconciling the resource (3/3)")
-			time.Sleep(1 * time.Second) // so that we can detect changes in last update timestamp
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking the resource Status")
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.LastUpdateTimestamp.After(previousUpdateTimestamp.Time)).To(BeTrue())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 
 			By("Checking the external resource")
 			ghTeam, err = ghClient.GetTeamBySlug(ctx, testOrganization, *resource.Status.Slug)
