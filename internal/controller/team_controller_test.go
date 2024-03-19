@@ -18,8 +18,6 @@ package controller
 
 import (
 	"context"
-	"log"
-	"os"
 
 	"github.com/google/go-github/v60/github"
 	. "github.com/onsi/ginkgo/v2"
@@ -34,16 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var (
-	deletionGracePeriod int64  = 5
-	testOrganization    string = "testorg"
-)
-
-// func init() {
-// 	flag.Int64Var(&deletionGracePeriod, "deletion-grace-period", 5, "Test resource deletion grace period (seconds). Only used when testing finalizers,.")
-// 	flag.StringVar(&testOrganization, "organization", "testorg", "GitHub organization against which tests will be run.")
-// 	flag.Parse()
-// }
+var testTeamName string = ghTestResourcePrefix + "team0"
 
 var _ = Describe("Team Controller", func() {
 	const resourceName = "test-resource"
@@ -55,30 +44,6 @@ var _ = Describe("Team Controller", func() {
 		Namespace: "default", // TODO(user):Modify as needed
 	}
 	team := &githubv1alpha1.Team{}
-
-	ghResourcePrefix := "github-operator-test-"
-	testTeamName := ghResourcePrefix + "team0"
-	org, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
-	if ok {
-		testOrganization = org
-	}
-
-	var ghClient GitHubRequester
-	creds, err := GitHubCredentialsFromEnv()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if creds.HasCredentials() {
-		client, err := NewGitHubClientFromCredentials(ctx, creds)
-		if err != nil {
-			log.Fatal(err)
-		}
-		ghClient = client
-	} else {
-		client := NewTestGitHubClient()
-		client.CreateOrganization(ctx, testOrganization)
-		ghClient = client
-	}
 
 	Context("When creating a resource", func() {
 		BeforeEach(func() {
@@ -259,7 +224,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			originalName := resource.Spec.Name
-			newName := ghResourcePrefix + "team1"
+			newName := ghTestResourcePrefix + "team1"
 			resource.Spec.Name = newName
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 

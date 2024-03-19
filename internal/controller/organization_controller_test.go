@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 
+	"github.com/google/go-github/v60/github"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,19 +32,21 @@ import (
 )
 
 var _ = Describe("Organization Controller", func() {
+	const resourceName = "test-resource"
+
+	ctx := context.Background()
+
+	typeNamespacedName := types.NamespacedName{
+		Name:      resourceName,
+		Namespace: "default",
+	}
+
+	organization := &githubv1alpha1.Organization{}
+	existingOrgState := &github.Organization{}
+
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
-
-		ctx := context.Background()
-
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
-		}
-		organization := &githubv1alpha1.Organization{}
-
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Organization")
+			By("Creating the custom resource for the Kind Organization")
 			err := k8sClient.Get(ctx, typeNamespacedName, organization)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &githubv1alpha1.Organization{
@@ -51,26 +54,37 @@ var _ = Describe("Organization Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: githubv1alpha1.OrganizationSpec{
+						Login: testOrganization,
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
+
+			By("Storing the existing GitHub organization state")
+			existingOrgState, err = ghClient.GetOrganization(ctx, testOrganization)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &githubv1alpha1.Organization{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Cleanup the specific resource instance Organization")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+			By("Restoring the original GitHub organization state")
+			_, err = ghClient.UpdateOrganization(ctx, testOrganization, existingOrgState)
+			Expect(err).NotTo(HaveOccurred())
+
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &OrganizationReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

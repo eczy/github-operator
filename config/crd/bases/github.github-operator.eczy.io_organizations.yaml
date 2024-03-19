@@ -84,6 +84,9 @@ spec:
               location:
                 description: The location.
                 type: string
+              login:
+                description: The organization name. The name is not case sensitive.
+                type: string
               members_can_create_internal_repositories:
                 description: Whether organization members can create internal repositories,
                   which are visible to all enterprise members. You can only allow
@@ -122,21 +125,9 @@ spec:
               name:
                 description: The shorthand name of the company.
                 type: string
-              org:
-                description: The organization name. The name is not case sensitive.
-                type: string
               secret_scanning_enabled_for_new_repositories:
                 description: Whether secret scanning is automatically enabled for
                   new repositories.
-                type: boolean
-              secret_scanning_push_protection_custom_link:
-                description: If secret_scanning_push_protection_custom_link_enabled
-                  is true, the URL that will be displayed to contributors who are
-                  blocked from pushing a secret.
-                type: string
-              secret_scanning_push_protection_custom_link_enabled:
-                description: Whether a custom link is shown to contributors who are
-                  blocked from pushing a secret by push protection.
                 type: boolean
               secret_scanning_push_protection_enabled_for_new_repositories:
                 description: Whether secret scanning push protection is automatically
@@ -151,11 +142,78 @@ spec:
                 type: boolean
             required:
             - email
+            - login
             - name
-            - org
             type: object
           status:
             description: OrganizationStatus defines the observed state of Organization
+            properties:
+              advanced_security_enabled_for_new_repositories:
+                type: boolean
+              billing_email:
+                type: string
+              blog:
+                type: string
+              comapny:
+                type: string
+              default_repository_permission:
+                type: string
+              dependabot_alerts_enabled_for_new_repositories:
+                type: boolean
+              dependabot_security_updates_enabled_for_new_repositories:
+                type: boolean
+              dependency_graph_enabled_for_new_repositories:
+                type: boolean
+              description:
+                type: string
+              email:
+                type: string
+              has_organization_projects:
+                type: boolean
+              has_repository_projects:
+                type: boolean
+              id:
+                format: int64
+                type: integer
+              last_update_timestamp:
+                format: date-time
+                type: string
+              location:
+                type: string
+              login:
+                description: |-
+                  INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+                  Important: Run "make" to regenerate code after modifying this file
+                type: string
+              members_can_create_internal_repositories:
+                type: boolean
+              members_can_create_pages:
+                type: boolean
+              members_can_create_private_pages:
+                type: boolean
+              members_can_create_private_repositories:
+                type: boolean
+              members_can_create_public_pages:
+                type: boolean
+              members_can_create_public_repositories:
+                type: boolean
+              members_can_create_repositories:
+                type: boolean
+              members_can_fork_private_repositories:
+                type: boolean
+              name:
+                type: string
+              secret_scanning_enabled_for_new_repositories:
+                type: boolean
+              secret_scanning_push_protection_enabled_for_new_repositories:
+                type: boolean
+              twitter_username:
+                type: string
+              web_commit_signoff_required:
+                type: boolean
+            required:
+            - email
+            - name
             type: object
         type: object
     served: true

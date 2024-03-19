@@ -17,7 +17,9 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -39,9 +41,16 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
+var (
+	cfg       *rest.Config
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+
+	ghClient             GitHubRequester
+	deletionGracePeriod  int64  = 5
+	testOrganization     string = "testorg"
+	ghTestResourcePrefix string = "github-operator-test-"
+)
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -51,6 +60,24 @@ func TestControllers(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+
+	org, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
+	if ok {
+		testOrganization = org
+	}
+
+	ctx := context.Background()
+	creds, err := GitHubCredentialsFromEnv()
+	Expect(err).NotTo(HaveOccurred())
+	if creds.HasCredentials() {
+		client, err := NewGitHubClientFromCredentials(ctx, creds)
+		Expect(err).NotTo(HaveOccurred())
+		ghClient = client
+	} else {
+		client := NewTestGitHubClient()
+		client.CreateOrganization(ctx, testOrganization)
+		ghClient = client
+	}
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -66,7 +93,6 @@ var _ = BeforeSuite(func() {
 			fmt.Sprintf("1.29.0-%s-%s", runtime.GOOS, runtime.GOARCH)),
 	}
 
-	var err error
 	// cfg is defined in this file globally.
 	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())

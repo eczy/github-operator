@@ -79,7 +79,7 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// fetch team resource
 	team := &githubv1alpha1.Team{}
 	if err := r.Get(ctx, req.NamespacedName, team); err != nil {
-		log.Error(err, "unable to fetch Team resource")
+		log.Error(err, "error fetching Team resource")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -172,7 +172,6 @@ func (r *TeamReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// modifies team in place
 func (r *TeamReconciler) createTeam(ctx context.Context, team *githubv1alpha1.Team) (*github.Team, error) {
 	newTeam, err := teamResourceToNewTeam(team)
 	if err != nil {
@@ -191,9 +190,6 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 
 	updateTeam := github.NewTeam{}
 	needsUpdate := false
-
-	// resolve owner
-	// TODO
 
 	// resolve name
 	// name can never be blank

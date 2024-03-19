@@ -11,20 +11,22 @@ import (
 var _ GitHubRequester = &TestGitHubClient{}
 
 type TestOrganization struct {
-	Login         string
-	Id            int64
 	TeamById      map[int64]*github.Team
 	TeamBySlug    map[string]*github.Team
 	TeamIdCounter int64
+
+	GitHubOrganization *github.Organization
 }
 
-func NewTestOrganization(slug string, id int64) *TestOrganization {
+func NewTestOrganization(login string, id int64) *TestOrganization {
 	return &TestOrganization{
-		Login:         slug,
-		Id:            id,
 		TeamById:      map[int64]*github.Team{},
 		TeamBySlug:    map[string]*github.Team{},
 		TeamIdCounter: 0,
+		GitHubOrganization: &github.Organization{
+			Login: github.String(login),
+			ID:    github.Int64(id),
+		},
 	}
 }
 
@@ -38,8 +40,8 @@ type TestGitHubClientOption = func(*TestGitHubClient)
 
 func WithTestOrganization(org TestOrganization) TestGitHubClientOption {
 	return func(tghc *TestGitHubClient) {
-		tghc.OrgsById[org.Id] = &org
-		tghc.OrgsBySlug[org.Login] = &org
+		tghc.OrgsById[org.GitHubOrganization.GetID()] = &org
+		tghc.OrgsBySlug[org.GitHubOrganization.GetLogin()] = &org
 	}
 }
 
@@ -114,8 +116,8 @@ func (tghc *TestGitHubClient) CreateTeam(ctx context.Context, org string, newTea
 			Name:        &newTeam.Name,
 			Description: newTeam.Description,
 			Organization: &github.Organization{
-				Login: github.String(organization.Login),
-				ID:    github.Int64(organization.Id),
+				Login: github.String(organization.GitHubOrganization.GetLogin()),
+				ID:    github.Int64(organization.GitHubOrganization.GetID()),
 			},
 			Slug: &newTeam.Name,
 		}
@@ -159,7 +161,6 @@ func (tghc *TestGitHubClient) DeleteTeamBySlug(ctx context.Context, org string, 
 		if team, ok := organization.TeamBySlug[slug]; ok {
 			delete(organization.TeamBySlug, slug)
 			delete(organization.TeamById, *team.ID)
-
 			return nil
 		}
 		return fmt.Errorf("team '%s' not found in org '%s'", slug, org)
@@ -177,4 +178,33 @@ func (tghc *TestGitHubClient) DeleteTeamById(ctx context.Context, org int64, tea
 		return fmt.Errorf("team '%d' not found in org '%d'", teamId, org)
 	}
 	return fmt.Errorf("org '%d' not found", org)
+}
+
+// DeleteOrganization implements GitHubRequester.
+func (tghc *TestGitHubClient) DeleteOrganization(ctx context.Context, login string) error {
+	if org, ok := tghc.OrgsBySlug[login]; ok {
+		id := org.GitHubOrganization.GetID()
+		delete(tghc.OrgsById, id)
+		delete(tghc.OrgsBySlug, login)
+		return nil
+	}
+	return fmt.Errorf("org '%s' not found", login)
+
+}
+
+// GetOrganization implements GitHubRequester.
+func (tghc *TestGitHubClient) GetOrganization(ctx context.Context, login string) (*github.Organization, error) {
+	if org, ok := tghc.OrgsBySlug[login]; ok {
+		return org.GitHubOrganization, nil
+	}
+	return nil, fmt.Errorf("org '%s' not found", login)
+}
+
+// UpdateOrganization implements GitHubRequester.
+func (tghc *TestGitHubClient) UpdateOrganization(ctx context.Context, login string, updateOrg *github.Organization) (*github.Organization, error) {
+	if _, ok := tghc.OrgsBySlug[login]; ok {
+		tghc.OrgsBySlug[login].GitHubOrganization = updateOrg
+		return updateOrg, nil
+	}
+	return nil, fmt.Errorf("org '%s' not found", login)
 }

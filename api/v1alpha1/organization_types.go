@@ -29,7 +29,7 @@ type OrganizationSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// The organization name. The name is not case sensitive.
-	Org string `json:"org"` // TODO slug?
+	Login string `json:"login"`
 
 	// The shorthand name of the company.
 	Name string `json:"name"`
@@ -108,18 +108,42 @@ type OrganizationSpec struct {
 
 	// Whether secret scanning push protection is automatically enabled for new repositories.
 	SecretScanningPushProtectionEnabledForNewRepositories *bool `json:"secret_scanning_push_protection_enabled_for_new_repositories,omitempty"`
-
-	// Whether a custom link is shown to contributors who are blocked from pushing a secret by push protection.
-	SecretScanningPushProtectionCustomLinkEnabled *bool `json:"secret_scanning_push_protection_custom_link_enabled,omitempty"`
-
-	// If secret_scanning_push_protection_custom_link_enabled is true, the URL that will be displayed to contributors who are blocked from pushing a secret.
-	SecretScanningPushProtectionCustomLink *string `json:"secret_scanning_push_protection_custom_link,omitempty"`
 }
 
 // OrganizationStatus defines the observed state of Organization
 type OrganizationStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Login               *string      `json:"login,omitempty"`
+	Id                  *int64       `json:"id,omitempty"`
+	LastUpdateTimestamp *metav1.Time `json:"last_update_timestamp,omitempty"`
+
+	Name                                                  string  `json:"name"`
+	BillingEmail                                          string  `json:"billing_email,omitempty"`
+	Company                                               string  `json:"comapny,omitempty"`
+	Email                                                 string  `json:"email"`
+	TwitterUsername                                       *string `json:"twitter_username,omitempty"`
+	Location                                              *string `json:"location,omitempty"`
+	Description                                           *string `json:"description,omitempty"`
+	HasOrganizationProjects                               *bool   `json:"has_organization_projects,omitempty"`
+	HasRepositoryProjects                                 *bool   `json:"has_repository_projects,omitempty"`
+	DefaultRepositoryPermission                           *string `json:"default_repository_permission,omitempty"` // TODO: enum
+	MembersCanCreateRepositories                          *bool   `json:"members_can_create_repositories,omitempty"`
+	MembersCanCreateInternalRepositories                  *bool   `json:"members_can_create_internal_repositories,omitempty"`
+	MembersCanCreatePrivateRepositories                   *bool   `json:"members_can_create_private_repositories,omitempty"`
+	MembersCanCreatePublicRepositories                    *bool   `json:"members_can_create_public_repositories,omitempty"`
+	MembersCanCreatePages                                 *bool   `json:"members_can_create_pages,omitempty"`
+	MembersCanCreatePublicPages                           *bool   `json:"members_can_create_public_pages,omitempty"`
+	MembersCanCreatePrivatePages                          *bool   `json:"members_can_create_private_pages,omitempty"`
+	MembersCanForkPrivateRepositories                     *bool   `json:"members_can_fork_private_repositories,omitempty"`
+	WebCommitSignoffRequired                              *bool   `json:"web_commit_signoff_required,omitempty"`
+	Blog                                                  *string `json:"blog,omitempty"`
+	AdvancedSecurityEnabledForNewRepositories             *bool   `json:"advanced_security_enabled_for_new_repositories,omitempty"`
+	DependabotAlertsEnabledForNewRepositories             *bool   `json:"dependabot_alerts_enabled_for_new_repositories,omitempty"`
+	DependabotSecurityUpdatesEnabledForNewRepositories    *bool   `json:"dependabot_security_updates_enabled_for_new_repositories,omitempty"`
+	DependencyGraphEnabledForNewRepositories              *bool   `json:"dependency_graph_enabled_for_new_repositories,omitempty"`
+	SecretScanningEnabledForNewRepositories               *bool   `json:"secret_scanning_enabled_for_new_repositories,omitempty"`
+	SecretScanningPushProtectionEnabledForNewRepositories *bool   `json:"secret_scanning_push_protection_enabled_for_new_repositories,omitempty"`
 }
 
 //+kubebuilder:object:root=true

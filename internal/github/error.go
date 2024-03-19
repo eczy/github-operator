@@ -18,3 +18,19 @@ func (e *TeamNotFoundError) Error() string {
 		return "team not found"
 	}
 }
+
+type OrganizationNotFoundError struct {
+	Login *string
+	Id    *int64
+}
+
+func (e *OrganizationNotFoundError) Error() string {
+	if e.Login != nil {
+		return fmt.Sprintf("organization '%s' not found", *e.Login)
+
+	} else if e.Id != nil {
+		return fmt.Sprintf("organization '%d' not found", *e.Id)
+	} else {
+		return "organization not found"
+	}
+}
