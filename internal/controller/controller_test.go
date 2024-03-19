@@ -26,6 +26,7 @@ func NewTestOrganization(login string, id int64) *TestOrganization {
 		GitHubOrganization: &github.Organization{
 			Login: github.String(login),
 			ID:    github.Int64(id),
+			Name:  github.String(login),
 		},
 	}
 }
@@ -56,14 +57,15 @@ func NewTestGitHubClient(opts ...TestGitHubClientOption) *TestGitHubClient {
 	return client
 }
 
-func (tghc *TestGitHubClient) CreateOrganization(ctx context.Context, login string) error {
+func (tghc *TestGitHubClient) CreateOrganization(ctx context.Context, login string) (*github.Organization, error) {
 	if _, ok := tghc.OrgsBySlug[login]; !ok {
 		org := NewTestOrganization(login, tghc.OrgIdCounter)
 		tghc.OrgsBySlug[login] = org
 		tghc.OrgsById[tghc.OrgIdCounter] = org
 		tghc.OrgIdCounter += 1
+		return org.GitHubOrganization, nil
 	}
-	return nil
+	return nil, fmt.Errorf("failed to create org '%s'", login)
 }
 
 // TeamRequester
@@ -201,10 +203,14 @@ func (tghc *TestGitHubClient) GetOrganization(ctx context.Context, login string)
 }
 
 // UpdateOrganization implements GitHubRequester.
+// Temporarily only considers name and description.
 func (tghc *TestGitHubClient) UpdateOrganization(ctx context.Context, login string, updateOrg *github.Organization) (*github.Organization, error) {
 	if _, ok := tghc.OrgsBySlug[login]; ok {
-		tghc.OrgsBySlug[login].GitHubOrganization = updateOrg
-		return updateOrg, nil
+		org := tghc.OrgsBySlug[login].GitHubOrganization
+		org.Name = updateOrg.Name
+		org.Description = updateOrg.Description
+		tghc.OrgsBySlug[login].GitHubOrganization = org
+		return org, nil
 	}
 	return nil, fmt.Errorf("org '%s' not found", login)
 }

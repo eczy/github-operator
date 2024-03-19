@@ -55,7 +55,9 @@ var _ = Describe("Organization Controller", func() {
 						Namespace: "default",
 					},
 					Spec: githubv1alpha1.OrganizationSpec{
-						Login: testOrganization,
+						Login:        testOrganization,
+						Name:         testOrganization,
+						BillingEmail: "fakeemailfoobar@gmail.com",
 					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -75,11 +77,19 @@ var _ = Describe("Organization Controller", func() {
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 			By("Restoring the original GitHub organization state")
+			existingOrgState.MembersCanCreateInternalRepos = nil // required for non-enterprise orgs
 			_, err = ghClient.UpdateOrganization(ctx, testOrganization, existingOrgState)
 			Expect(err).NotTo(HaveOccurred())
-
 		})
-		It("should successfully reconcile the resource", func() {
+
+		It("should successfully update the resource's name", func() {
+			newName := testOrganization + "-modified"
+			By("Updating the resource name")
+			resource := &githubv1alpha1.Organization{}
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			resource.Spec.Name = newName
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
 			By("Reconciling the created resource")
 			controllerReconciler := &OrganizationReconciler{
 				Client:       k8sClient,
@@ -91,8 +101,17 @@ var _ = Describe("Organization Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			By("Checking resource status")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			Expect(resource.Status.Id).NotTo(BeNil())
+
+			By("Checking external state")
+			org, err := ghClient.GetOrganization(ctx, testOrganization)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(org.Name).NotTo(BeNil())
+			Expect(*org.Name).To(Equal(newName))
 		})
+		// TODO: more fields
 	})
 })

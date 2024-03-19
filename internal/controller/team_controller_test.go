@@ -43,6 +43,7 @@ var _ = Describe("Team Controller", func() {
 		Name:      resourceName,
 		Namespace: "default", // TODO(user):Modify as needed
 	}
+
 	team := &githubv1alpha1.Team{}
 
 	Context("When creating a resource", func() {
