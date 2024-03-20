@@ -172,6 +172,8 @@ func (tghc *TestGitHubClient) UpdateRepositoryBySlug(ctx context.Context, owner 
 		if repo, ok := org.Repositories[name]; ok {
 			if update.Name != nil {
 				repo.Name = update.Name
+				org.Repositories[*repo.Name] = repo
+				delete(org.Repositories, name)
 			}
 			if update.Description != nil {
 				repo.Description = update.Description
@@ -182,6 +184,8 @@ func (tghc *TestGitHubClient) UpdateRepositoryBySlug(ctx context.Context, owner 
 		if repo, ok := userRepos[name]; ok {
 			if update.Name != nil {
 				repo.Name = update.Name
+				userRepos[*repo.Name] = repo
+				delete(userRepos, name)
 			}
 			if update.Description != nil {
 				repo.Description = update.Description

@@ -367,8 +367,8 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 	// perform update if necessary
 	// TODO: more granular updates (allow just topic update)
 	if needsUpdate || needsTopicsUpdate || repo.Status.LastUpdateTimestamp == nil {
-		log.Info("updating repository", "name", repo.Spec.Name)
-		updated, err := r.GitHubClient.UpdateRepositoryBySlug(ctx, repo.Spec.Owner, repo.Spec.Name, updateRepo)
+		log.Info("updating repository", "name", ghRepo.GetName())
+		updated, err := r.GitHubClient.UpdateRepositoryBySlug(ctx, ghRepo.GetOwner().GetLogin(), ghRepo.GetName(), updateRepo)
 		if err != nil {
 			log.Error(err, "error updating repository", "name", repo.Spec.Name)
 			return err

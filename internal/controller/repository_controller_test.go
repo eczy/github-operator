@@ -145,20 +145,27 @@ var _ = Describe("Repository Controller", func() {
 
 		It("should successfully update the resource Name", func() {
 			newName := testRepositoryName + "-foo"
-			By("Updating the resource Spec.Name")
-			resource := &githubv1alpha1.Repository{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			resource.Spec.Name = newName
-			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
-			By("Reconciling the resource (1/2)")
+			// need to associate the repo before modifying
+			By("Reconciling the resource (1/3)")
 			controllerReconciler := &RepositoryReconciler{
 				Client:       k8sClient,
 				Scheme:       k8sClient.Scheme(),
 				GitHubClient: ghClient,
 			}
 
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			By("Updating the resource Spec.Name")
+			resource := &githubv1alpha1.Repository{}
+			err = k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+			resource.Spec.Name = newName
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Reconciling the resource (2/3)")
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
@@ -179,7 +186,7 @@ var _ = Describe("Repository Controller", func() {
 			resource.Spec.Name = testRepositoryName
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
-			By("Reconciling the resource (2/2)")
+			By("Reconciling the resource (3/3)")
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
