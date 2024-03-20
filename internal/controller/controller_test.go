@@ -16,6 +16,9 @@ type TestOrganization struct {
 	TeamIdCounter int64
 
 	GitHubOrganization *github.Organization
+
+	Repositories        map[string]*github.Repository
+	RepositoryIdCounter int64
 }
 
 func NewTestOrganization(login string, id int64) *TestOrganization {
@@ -35,6 +38,147 @@ type TestGitHubClient struct {
 	OrgsBySlug   map[string]*TestOrganization
 	OrgsById     map[int64]*TestOrganization
 	OrgIdCounter int64
+
+	UserRepos map[string]map[string]*github.Repository
+
+	AuthenticatedUser *string
+}
+
+// UpdateRepositoryTopics implements GitHubRequester.
+func (tghc *TestGitHubClient) UpdateRepositoryTopics(ctx context.Context, owner string, repo string, topics []string) ([]string, error) {
+	if org, ok := tghc.OrgsBySlug[owner]; ok {
+		if repo, ok := org.Repositories[repo]; ok {
+			repo.Topics = topics
+			return topics, nil
+		}
+	} else if userRepos, ok := tghc.UserRepos[owner]; ok {
+		if repo, ok := userRepos[repo]; ok {
+			repo.Topics = topics
+			return topics, nil
+		}
+	}
+	return nil, fmt.Errorf("no repo '%s' for owner '%s", repo, owner)
+}
+
+// CreateRepositoryFromTemplate implements GitHubRequester.
+func (tghc *TestGitHubClient) CreateRepositoryFromTemplate(ctx context.Context, templateOwner string, templateRepository string, req *github.TemplateRepoRequest) (*github.Repository, error) {
+	// TODO: this can be refactored to reduce repeated code
+	if org, ok := tghc.OrgsBySlug[templateOwner]; ok {
+		if repo, ok := org.Repositories[templateRepository]; ok {
+			if req.Name == nil {
+				return nil, fmt.Errorf("request name cannot be nil")
+			}
+
+			repo.ID = &org.RepositoryIdCounter
+			org.RepositoryIdCounter += 1
+			repo.Name = req.Name
+
+			if req.Owner != nil {
+				repo.Owner = &github.User{Login: req.Owner}
+			}
+			org.Repositories[*repo.Name] = repo
+			return repo, nil
+		}
+	} else if userRepos, ok := tghc.UserRepos[templateOwner]; ok {
+		if repo, ok := userRepos[templateRepository]; ok {
+			if req.Name == nil {
+				return nil, fmt.Errorf("request name cannot be nil")
+			}
+
+			repo.ID = &org.RepositoryIdCounter
+			org.RepositoryIdCounter += 1
+			repo.Name = req.Name
+
+			if req.Owner != nil {
+				repo.Owner = &github.User{Login: req.Owner}
+			}
+			org.Repositories[*repo.Name] = repo
+			return repo, nil
+		}
+	}
+	return nil, fmt.Errorf("no template repo '%s' for owner '%s", templateRepository, templateOwner)
+}
+
+// CreateUserRepository implements GitHubRequester.
+func (tghc *TestGitHubClient) CreateRepository(ctx context.Context, org string, create *github.Repository) (*github.Repository, error) {
+	if organization, ok := tghc.OrgsBySlug[org]; ok {
+		create.ID = &organization.RepositoryIdCounter
+		organization.RepositoryIdCounter += 1
+		organization.Repositories[*create.Name] = create
+		return create, nil
+	} else if org == "" {
+		if tghc.AuthenticatedUser == nil {
+			return nil, fmt.Errorf("no authenticated user")
+		}
+		create.ID = &organization.RepositoryIdCounter
+		organization.RepositoryIdCounter += 1
+		if userRepos, ok := tghc.UserRepos[*tghc.AuthenticatedUser]; ok {
+			userRepos[*create.Name] = create
+		} else {
+			tghc.UserRepos[*tghc.AuthenticatedUser] = map[string]*github.Repository{
+				*create.Name: create,
+			}
+		}
+		return create, nil
+	}
+	return nil, fmt.Errorf("org '%s' doesn't exist", org)
+}
+
+// DeleteRepositoryBySlug implements GitHubRequester.
+func (tghc *TestGitHubClient) DeleteRepositoryBySlug(ctx context.Context, owner string, name string) error {
+	if org, ok := tghc.OrgsBySlug[owner]; ok {
+		if _, ok := org.Repositories[name]; ok {
+			delete(org.Repositories, name)
+			return nil
+		}
+	} else if userRepos, ok := tghc.UserRepos[owner]; ok {
+		if _, ok := userRepos[name]; ok {
+			delete(userRepos, name)
+			return nil
+		}
+	}
+	return fmt.Errorf("no repo '%s' for owner '%s", name, owner)
+}
+
+// GetRepositoryBySlug implements GitHubRequester.
+func (tghc *TestGitHubClient) GetRepositoryBySlug(ctx context.Context, owner string, name string) (*github.Repository, error) {
+	if org, ok := tghc.OrgsBySlug[owner]; ok {
+		if repo, ok := org.Repositories[name]; ok {
+			return repo, nil
+		}
+	} else if userRepos, ok := tghc.UserRepos[owner]; ok {
+		if repo, ok := userRepos[name]; ok {
+			return repo, nil
+		}
+	}
+	return nil, fmt.Errorf("no repo '%s' for owner '%s", name, owner)
+}
+
+// UpdateRepositoryBySlug implements GitHubRequester.
+func (tghc *TestGitHubClient) UpdateRepositoryBySlug(ctx context.Context, owner string, name string, update *github.Repository) (*github.Repository, error) {
+	// TODO: this can be refactored to reduce repeated code
+	if org, ok := tghc.OrgsBySlug[owner]; ok {
+		if repo, ok := org.Repositories[name]; ok {
+			if update.Name != nil {
+				repo.Name = update.Name
+			}
+			if update.Description != nil {
+				repo.Description = update.Description
+			}
+			return repo, nil
+		}
+	} else if userRepos, ok := tghc.UserRepos[owner]; ok {
+		if repo, ok := userRepos[name]; ok {
+			if update.Name != nil {
+				repo.Name = update.Name
+			}
+			if update.Description != nil {
+				repo.Description = update.Description
+			}
+			return repo, nil
+		}
+	}
+	return nil, fmt.Errorf("no repo '%s' for owner '%s", name, owner)
 }
 
 type TestGitHubClientOption = func(*TestGitHubClient)
@@ -43,6 +187,12 @@ func WithTestOrganization(org TestOrganization) TestGitHubClientOption {
 	return func(tghc *TestGitHubClient) {
 		tghc.OrgsById[org.GitHubOrganization.GetID()] = &org
 		tghc.OrgsBySlug[org.GitHubOrganization.GetLogin()] = &org
+	}
+}
+
+func WithAuthenticatedUser(user string) TestGitHubClientOption {
+	return func(tghc *TestGitHubClient) {
+		tghc.AuthenticatedUser = &user
 	}
 }
 

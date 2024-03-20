@@ -34,3 +34,20 @@ func (e *OrganizationNotFoundError) Error() string {
 		return "organization not found"
 	}
 }
+
+type RepositoryNotFoundError struct {
+	OwnerLogin *string
+	OwnerId    *int64
+	Slug       *string
+	Id         *int64
+}
+
+func (e *RepositoryNotFoundError) Error() string {
+	if e.OwnerLogin != nil && e.Slug != nil {
+		return fmt.Sprintf("repository '%s' not found for owner '%s'", *e.Slug, *e.OwnerLogin)
+	} else if e.OwnerId != nil && e.Id != nil {
+		return fmt.Sprintf("repository %d not found for owner %d", *e.Id, *e.OwnerId)
+	} else {
+		return "repository not found"
+	}
+}

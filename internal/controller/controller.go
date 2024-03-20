@@ -113,3 +113,20 @@ func ptrNonNilAndNotEqualTo[T comparable](a *T, b T) bool {
 	}
 	return *a != b
 }
+
+// returns if set(a) is equivalent to set(b)
+func cmpSlices[T comparable](a, b []T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	setA := map[T]struct{}{}
+	for _, a := range a {
+		setA[a] = struct{}{}
+	}
+	for _, b := range b {
+		if _, ok := setA[b]; !ok {
+			return false
+		}
+	}
+	return true
+}

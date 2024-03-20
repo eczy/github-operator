@@ -49,6 +49,7 @@ var (
 	ghClient             GitHubRequester
 	deletionGracePeriod  int64  = 5
 	testOrganization     string = "testorg"
+	testUser             string = "testuser"
 	ghTestResourcePrefix string = "github-operator-test-"
 )
 
@@ -64,6 +65,11 @@ var _ = BeforeSuite(func() {
 	org, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
 	if ok {
 		testOrganization = org
+	}
+
+	user, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_USER")
+	if ok {
+		testUser = user
 	}
 
 	ctx := context.Background()
