@@ -72,6 +72,7 @@ func (tghc *TestGitHubClient) CreateRepositoryFromTemplate(ctx context.Context, 
 				return nil, fmt.Errorf("request name cannot be nil")
 			}
 
+			repo := *repo
 			repo.ID = &org.RepositoryIdCounter
 			org.RepositoryIdCounter += 1
 			repo.Name = req.Name
@@ -79,14 +80,16 @@ func (tghc *TestGitHubClient) CreateRepositoryFromTemplate(ctx context.Context, 
 			if req.Owner != nil {
 				repo.Owner = &github.User{Login: req.Owner}
 			}
-			org.Repositories[*repo.Name] = repo
-			return repo, nil
+			org.Repositories[*repo.Name] = &repo
+			return &repo, nil
 		}
 	} else if userRepos, ok := tghc.UserRepos[templateOwner]; ok {
 		if repo, ok := userRepos[templateRepository]; ok {
 			if req.Name == nil {
 				return nil, fmt.Errorf("request name cannot be nil")
 			}
+
+			repo := *repo
 			repo.ID = &tghc.UserRepoCounter
 			tghc.UserRepoCounter += 1
 			repo.Name = req.Name
@@ -94,8 +97,8 @@ func (tghc *TestGitHubClient) CreateRepositoryFromTemplate(ctx context.Context, 
 			if req.Owner != nil {
 				repo.Owner = &github.User{Login: req.Owner}
 			}
-			org.Repositories[*repo.Name] = repo
-			return repo, nil
+			org.Repositories[*repo.Name] = &repo
+			return &repo, nil
 		}
 	}
 	return nil, fmt.Errorf("no template repo '%s' for owner '%s", templateRepository, templateOwner)
@@ -105,6 +108,9 @@ func (tghc *TestGitHubClient) CreateRepositoryFromTemplate(ctx context.Context, 
 func (tghc *TestGitHubClient) CreateRepository(ctx context.Context, org string, create *github.Repository) (*github.Repository, error) {
 	if organization, ok := tghc.OrgsBySlug[org]; ok {
 		create.ID = &organization.RepositoryIdCounter
+		create.Owner = &github.User{
+			Login: github.String(org),
+		}
 		organization.RepositoryIdCounter += 1
 		organization.Repositories[*create.Name] = create
 		return create, nil
@@ -113,6 +119,9 @@ func (tghc *TestGitHubClient) CreateRepository(ctx context.Context, org string, 
 			return nil, fmt.Errorf("no authenticated user")
 		}
 		create.ID = &tghc.UserRepoCounter
+		create.Owner = &github.User{
+			Login: tghc.AuthenticatedUser,
+		}
 		tghc.UserRepoCounter += 1
 		if userRepos, ok := tghc.UserRepos[*tghc.AuthenticatedUser]; ok {
 			userRepos[*create.Name] = create

@@ -207,10 +207,12 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		needsUpdate = true
 	}
 	// Owner
-	if repo.Spec.Name != ghRepo.GetName() {
-		return fmt.Errorf("repository owner does not match Spec owner")
+	owner := ghRepo.GetOwner()
+	if owner != nil && repo.Spec.Owner != owner.GetLogin() {
+		return fmt.Errorf("repository owner '%s' does not match Spec owner '%s'", repo.Spec.Name, owner.GetLogin())
 	}
-	// TODO: if this is supported in the future
+	// TODO: transfer repository to new owner
+
 	// Description
 	if ptrNonNilAndNotEqualTo(repo.Spec.Description, ghRepo.GetDescription()) {
 		log.Info("repository Description update", "from", ghRepo.GetDescription(), "to", repo.Spec.Description)
