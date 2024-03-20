@@ -80,7 +80,9 @@ var _ = BeforeSuite(func() {
 		Expect(err).NotTo(HaveOccurred())
 		ghClient = client
 	} else {
-		client := NewTestGitHubClient()
+		client := NewTestGitHubClient(
+			WithAuthenticatedUser(testUser),
+		)
 		client.CreateOrganization(ctx, testOrganization)
 		ghClient = client
 	}

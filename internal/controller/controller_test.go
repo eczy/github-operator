@@ -23,9 +23,11 @@ type TestOrganization struct {
 
 func NewTestOrganization(login string, id int64) *TestOrganization {
 	return &TestOrganization{
-		TeamById:      map[int64]*github.Team{},
-		TeamBySlug:    map[string]*github.Team{},
-		TeamIdCounter: 0,
+		TeamById:            map[int64]*github.Team{},
+		TeamBySlug:          map[string]*github.Team{},
+		TeamIdCounter:       0,
+		RepositoryIdCounter: 0,
+		Repositories:        map[string]*github.Repository{},
 		GitHubOrganization: &github.Organization{
 			Login: github.String(login),
 			ID:    github.Int64(id),
@@ -39,7 +41,8 @@ type TestGitHubClient struct {
 	OrgsById     map[int64]*TestOrganization
 	OrgIdCounter int64
 
-	UserRepos map[string]map[string]*github.Repository
+	UserRepos       map[string]map[string]*github.Repository
+	UserRepoCounter int64
 
 	AuthenticatedUser *string
 }
@@ -84,9 +87,8 @@ func (tghc *TestGitHubClient) CreateRepositoryFromTemplate(ctx context.Context, 
 			if req.Name == nil {
 				return nil, fmt.Errorf("request name cannot be nil")
 			}
-
-			repo.ID = &org.RepositoryIdCounter
-			org.RepositoryIdCounter += 1
+			repo.ID = &tghc.UserRepoCounter
+			tghc.UserRepoCounter += 1
 			repo.Name = req.Name
 
 			if req.Owner != nil {
@@ -110,8 +112,8 @@ func (tghc *TestGitHubClient) CreateRepository(ctx context.Context, org string, 
 		if tghc.AuthenticatedUser == nil {
 			return nil, fmt.Errorf("no authenticated user")
 		}
-		create.ID = &organization.RepositoryIdCounter
-		organization.RepositoryIdCounter += 1
+		create.ID = &tghc.UserRepoCounter
+		tghc.UserRepoCounter += 1
 		if userRepos, ok := tghc.UserRepos[*tghc.AuthenticatedUser]; ok {
 			userRepos[*create.Name] = create
 		} else {
@@ -200,6 +202,7 @@ func NewTestGitHubClient(opts ...TestGitHubClientOption) *TestGitHubClient {
 	client := &TestGitHubClient{
 		OrgsBySlug: map[string]*TestOrganization{},
 		OrgsById:   map[int64]*TestOrganization{},
+		UserRepos:  map[string]map[string]*github.Repository{},
 	}
 	for _, opt := range opts {
 		opt(client)

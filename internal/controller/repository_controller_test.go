@@ -31,17 +31,19 @@ import (
 )
 
 var _ = Describe("Repository Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+	const resourceName = "test-resource"
 
-		ctx := context.Background()
+	ctx := context.Background()
 
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
-		}
-		repository := &githubv1alpha1.Repository{}
+	typeNamespacedName := types.NamespacedName{
+		Name:      resourceName,
+		Namespace: "default",
+	}
+	repository := &githubv1alpha1.Repository{}
 
+	testRepositoryName := "testrepo"
+
+	Context("When creating a resource", func() {
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Repository")
 			err := k8sClient.Get(ctx, typeNamespacedName, repository)
@@ -51,20 +53,25 @@ var _ = Describe("Repository Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: githubv1alpha1.RepositorySpec{
+						Name:  testRepositoryName,
+						Owner: testOrganization,
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &githubv1alpha1.Repository{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Cleanup the specific resource instance Repository")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+			By("Cleanup the external resource")
+			Expect(ghClient.DeleteRepositoryBySlug(ctx, testOrganization, testRepositoryName))
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
@@ -78,8 +85,109 @@ var _ = Describe("Repository Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			By("Checking resource Status")
+			resource := &githubv1alpha1.Repository{}
+			err = k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resource.Status.LastUpdateTimestamp.Time).NotTo(BeNil())
+			Expect(resource.Status.Name).NotTo(BeNil())
+			Expect(*resource.Status.Name).To(Equal(testRepositoryName))
+			Expect(resource.Status.Id).NotTo(BeNil())
+
+			By("Checking external resource")
+			ghRepo, err := ghClient.GetRepositoryBySlug(ctx, testOrganization, testRepositoryName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ghRepo.Name).NotTo(BeNil())
+			Expect(*ghRepo.Name).To(Equal(testRepositoryName))
 		})
 	})
+	// Context("When updating a resource", func() {
+	// 	BeforeEach(func() {
+	// 		By("creating the custom resource for the Kind Repository")
+	// 		err := k8sClient.Get(ctx, typeNamespacedName, repository)
+	// 		if err != nil && errors.IsNotFound(err) {
+	// 			resource := &githubv1alpha1.Repository{
+	// 				ObjectMeta: metav1.ObjectMeta{
+	// 					Name:      resourceName,
+	// 					Namespace: "default",
+	// 				},
+	// 				Spec: githubv1alpha1.RepositorySpec{
+	// 					Name:  testRepositoryName,
+	// 					Owner: testOrganization,
+	// 				},
+	// 			}
+	// 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+	// 		}
+	// 	})
+
+	// 	AfterEach(func() {
+	// 		// TODO(user): Cleanup logic after each test, like removing the resource instance.
+	// 		resource := &githubv1alpha1.Repository{}
+	// 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
+	// 		Expect(err).NotTo(HaveOccurred())
+
+	// 		By("Cleanup the specific resource instance Repository")
+	// 		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+	// 	})
+	// 	It("should successfully reconcile the resource", func() {
+	// 		By("Reconciling the created resource")
+	// 		controllerReconciler := &RepositoryReconciler{
+	// 			Client:       k8sClient,
+	// 			Scheme:       k8sClient.Scheme(),
+	// 			GitHubClient: ghClient,
+	// 		}
+
+	// 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+	// 			NamespacedName: typeNamespacedName,
+	// 		})
+	// 		Expect(err).NotTo(HaveOccurred())
+	// 		// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
+	// 		// Example: If you expect a certain status condition after reconciliation, verify it here.
+	// 	})
+	// })
+	// Context("When deleting a resource", func() {
+	// 	BeforeEach(func() {
+	// 		By("creating the custom resource for the Kind Repository")
+	// 		err := k8sClient.Get(ctx, typeNamespacedName, repository)
+	// 		if err != nil && errors.IsNotFound(err) {
+	// 			resource := &githubv1alpha1.Repository{
+	// 				ObjectMeta: metav1.ObjectMeta{
+	// 					Name:      resourceName,
+	// 					Namespace: "default",
+	// 				},
+	// 				Spec: githubv1alpha1.RepositorySpec{
+	// 					Name:  testRepositoryName,
+	// 					Owner: testOrganization,
+	// 				},
+	// 			}
+	// 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+	// 		}
+	// 	})
+
+	// 	AfterEach(func() {
+	// 		// TODO(user): Cleanup logic after each test, like removing the resource instance.
+	// 		resource := &githubv1alpha1.Repository{}
+	// 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
+	// 		Expect(err).NotTo(HaveOccurred())
+
+	// 		By("Cleanup the specific resource instance Repository")
+	// 		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+	// 	})
+	// 	It("should successfully reconcile the resource", func() {
+	// 		By("Reconciling the created resource")
+	// 		controllerReconciler := &RepositoryReconciler{
+	// 			Client:       k8sClient,
+	// 			Scheme:       k8sClient.Scheme(),
+	// 			GitHubClient: ghClient,
+	// 		}
+
+	// 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+	// 			NamespacedName: typeNamespacedName,
+	// 		})
+	// 		Expect(err).NotTo(HaveOccurred())
+	// 		// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
+	// 		// Example: If you expect a certain status condition after reconciliation, verify it here.
+	// 	})
+	// })
 })

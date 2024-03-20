@@ -33,7 +33,7 @@ import (
 )
 
 var (
-	repositoryFinalizerName = "github.github-operator.eczy.io/repository-finalizer"
+	repositoryFinalizerName = "github.github-operator.eczy.io/repo-finalizer"
 )
 
 type RepositoryRequester interface {
@@ -372,17 +372,17 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 			return err
 		}
 
-		updatedTopics, err := r.GitHubClient.UpdateRepositoryTopics(ctx, repo.Spec.Owner, repo.Spec.Name, repo.Spec.Topics)
+		ghRepoTopics, err := r.GitHubClient.UpdateRepositoryTopics(ctx, repo.Spec.Owner, repo.Spec.Name, repo.Spec.Topics)
 		if err != nil {
 			log.Error(err, "error updating repository topics", "name", repo.Spec.Name)
 		}
-		updated.Topics = updatedTopics
+		ghRepo.Topics = ghRepoTopics
 
 		ghRepo = updated
 
 		now := v1.Now()
 
-		owner := updated.GetOwner()
+		owner := ghRepo.GetOwner()
 		var ownerLogin string
 		var ownerId int64
 		if owner != nil {
@@ -390,7 +390,7 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 			ownerId = owner.GetID()
 		}
 
-		parent := updated.GetParent()
+		parent := ghRepo.GetParent()
 		var parentName string
 		var parentId int64
 		if owner != nil {
@@ -398,7 +398,7 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 			parentId = parent.GetID()
 		}
 
-		templateRepository := updated.GetTemplateRepository()
+		templateRepository := ghRepo.GetTemplateRepository()
 		var templateRepositoryOwnerName string
 		var templateRepositoryName string
 		var templateRepositoryId int64
@@ -408,7 +408,7 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 			templateRepositoryId = templateRepository.GetID()
 		}
 
-		organization := updated.GetOrganization()
+		organization := ghRepo.GetOrganization()
 		var organizationLogin string
 		var organizationId int64
 		if organization != nil {
@@ -418,21 +418,21 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 
 		repo.Status = githubv1alpha1.RepositoryStatus{
 			LastUpdateTimestamp:         &now,
-			Id:                          updated.ID,
-			NodeID:                      updated.NodeID,
+			Id:                          ghRepo.ID,
+			NodeID:                      ghRepo.NodeID,
 			OwnerLogin:                  github.String(ownerLogin),
 			OwnerId:                     github.Int64(ownerId),
-			Name:                        updated.Name,
-			FullName:                    updated.FullName,
-			Description:                 updated.Description,
-			Homepage:                    updated.Homepage,
-			DefaultBranch:               updated.DefaultBranch,
-			CreatedAt:                   (*v1.Time)(updated.CreatedAt),
-			PushedAt:                    (*v1.Time)(updated.PushedAt),
-			UpdatedAt:                   (*v1.Time)(updated.UpdatedAt),
-			Language:                    updated.Language,
-			Fork:                        updated.Fork,
-			Size:                        updated.Size,
+			Name:                        ghRepo.Name,
+			FullName:                    ghRepo.FullName,
+			Description:                 ghRepo.Description,
+			Homepage:                    ghRepo.Homepage,
+			DefaultBranch:               ghRepo.DefaultBranch,
+			CreatedAt:                   (*v1.Time)(ghRepo.CreatedAt),
+			PushedAt:                    (*v1.Time)(ghRepo.PushedAt),
+			UpdatedAt:                   (*v1.Time)(ghRepo.UpdatedAt),
+			Language:                    ghRepo.Language,
+			Fork:                        ghRepo.Fork,
+			Size:                        ghRepo.Size,
 			ParentName:                  github.String(parentName),
 			ParentId:                    github.Int64(parentId),
 			TemplateRepositoryOwnerName: github.String(templateRepositoryOwnerName),
@@ -440,30 +440,30 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 			TemplateRepositoryId:        github.Int64(templateRepositoryId),
 			OrganizationLogin:           github.String(organizationLogin),
 			OrganizationId:              github.Int64(organizationId),
-			AllowRebaseMerge:            updated.AllowRebaseMerge,
-			AllowUpdateBranch:           updated.AllowUpdateBranch,
-			AllowSquashMerge:            updated.AllowSquashMerge,
-			AllowMergeCommit:            updated.AllowMergeCommit,
-			AllowAutoMerge:              updated.AllowAutoMerge,
-			AllowForking:                updated.AllowForking,
-			WebCommitSignoffRequired:    updated.WebCommitSignoffRequired,
-			DeleteBranchOnMerge:         updated.DeleteBranchOnMerge,
-			SquashMergeCommitTitle:      updated.SquashMergeCommitTitle,
-			SquashMergeCommitMessage:    updated.SquashMergeCommitMessage,
-			MergeCommitTitle:            updated.MergeCommitTitle,
-			MergeCommitMessage:          updated.MergeCommitMessage,
-			Topics:                      updated.Topics,
-			Archived:                    updated.Archived,
-			Disabled:                    updated.Disabled,
-			HasIssues:                   updated.HasIssues,
-			HasWiki:                     updated.HasWiki,
-			HasPages:                    updated.HasPages,
-			HasProjects:                 updated.HasProjects,
-			HasDownloads:                updated.HasDownloads,
-			HasDiscussions:              updated.HasDiscussions,
-			IsTemplate:                  updated.IsTemplate,
-			LicenseTemplate:             updated.LicenseTemplate,
-			Visibility:                  updated.Visibility,
+			AllowRebaseMerge:            ghRepo.AllowRebaseMerge,
+			AllowUpdateBranch:           ghRepo.AllowUpdateBranch,
+			AllowSquashMerge:            ghRepo.AllowSquashMerge,
+			AllowMergeCommit:            ghRepo.AllowMergeCommit,
+			AllowAutoMerge:              ghRepo.AllowAutoMerge,
+			AllowForking:                ghRepo.AllowForking,
+			WebCommitSignoffRequired:    ghRepo.WebCommitSignoffRequired,
+			DeleteBranchOnMerge:         ghRepo.DeleteBranchOnMerge,
+			SquashMergeCommitTitle:      ghRepo.SquashMergeCommitTitle,
+			SquashMergeCommitMessage:    ghRepo.SquashMergeCommitMessage,
+			MergeCommitTitle:            ghRepo.MergeCommitTitle,
+			MergeCommitMessage:          ghRepo.MergeCommitMessage,
+			Topics:                      ghRepo.Topics,
+			Archived:                    ghRepo.Archived,
+			Disabled:                    ghRepo.Disabled,
+			HasIssues:                   ghRepo.HasIssues,
+			HasWiki:                     ghRepo.HasWiki,
+			HasPages:                    ghRepo.HasPages,
+			HasProjects:                 ghRepo.HasProjects,
+			HasDownloads:                ghRepo.HasDownloads,
+			HasDiscussions:              ghRepo.HasDiscussions,
+			IsTemplate:                  ghRepo.IsTemplate,
+			LicenseTemplate:             ghRepo.LicenseTemplate,
+			Visibility:                  ghRepo.Visibility,
 		}
 
 		// update status
