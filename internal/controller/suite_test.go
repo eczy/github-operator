@@ -18,14 +18,20 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"gopkg.in/dnaeon/go-vcr.v3/cassette"
+	"gopkg.in/dnaeon/go-vcr.v3/recorder"
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -35,7 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	githubv1alpha1 "github.com/eczy/github-operator/api/v1alpha1"
-	//+kubebuilder:scaffold:imports
+	gh "github.com/eczy/github-operator/internal/github" //+kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -51,6 +57,7 @@ var (
 	testOrganization     string = "testorg"
 	testUser             string = "testuser"
 	ghTestResourcePrefix string = "github-operator-test-"
+	vcrRecorder          *recorder.Recorder
 )
 
 func TestControllers(t *testing.T) {
@@ -61,31 +68,6 @@ func TestControllers(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
-
-	org, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
-	if ok {
-		testOrganization = org
-	}
-
-	user, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_USER")
-	if ok {
-		testUser = user
-	}
-
-	ctx := context.Background()
-	creds, err := GitHubCredentialsFromEnv()
-	Expect(err).NotTo(HaveOccurred())
-	if creds.HasCredentials() {
-		client, err := NewGitHubClientFromCredentials(ctx, creds)
-		Expect(err).NotTo(HaveOccurred())
-		ghClient = client
-	} else {
-		client := NewTestGitHubClient(
-			WithAuthenticatedUser(testUser),
-		)
-		client.CreateOrganization(ctx, testOrganization)
-		ghClient = client
-	}
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -101,6 +83,7 @@ var _ = BeforeSuite(func() {
 			fmt.Sprintf("1.29.0-%s-%s", runtime.GOOS, runtime.GOARCH)),
 	}
 
+	var err error
 	// cfg is defined in this file globally.
 	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
@@ -115,10 +98,85 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	By("Setting up the GitHub client")
+	org, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
+	if ok {
+		testOrganization = org
+	}
+
+	user, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_USER")
+	if ok {
+		testUser = user
+	}
+
+	recorderMode := recorder.ModeRecordOnce
+	mode, ok := os.LookupEnv("GITHUB_OPERATOR_RECORDER_MODE")
+	if ok {
+		lowerMode := strings.ToLower(mode)
+		switch lowerMode {
+		case "record-only":
+			recorderMode = recorder.ModeRecordOnly
+		case "replay-only":
+			recorderMode = recorder.ModeReplayOnly
+		case "replay-with-new-episodes":
+			recorderMode = recorder.ModeReplayWithNewEpisodes
+		case "record-once":
+			recorderMode = recorder.ModeRecordOnce
+		case "mode-passthrough":
+			recorderMode = recorder.ModePassthrough
+		default:
+			err := fmt.Errorf("invalid value for recorder mode: %s", mode)
+			Expect(err).NotTo(HaveOccurred())
+		}
+	}
+
+	cassetteName := "fixtures/test-github-operator-controller"
+	cassettePath := path.Dir(cassetteName)
+	if _, err := os.Stat(cassettePath); os.IsNotExist(err) {
+		err := os.MkdirAll(cassettePath, 0755)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	ctx := context.Background()
+
+	instCreds, err0 := GitHubInstallationCredentialsFromEnv()
+	oauthCreds, err1 := GitHubOauthCredentialsFromEnv()
+	base := http.DefaultTransport
+	rec, err := gh.RecorderRoundTripper(ctx, base, &recorder.Options{
+		CassetteName:       cassetteName,
+		Mode:               recorderMode,
+		RealTransport:      http.DefaultTransport,
+		SkipRequestLatency: true,
+	})
+	rmSecretsHook := func(i *cassette.Interaction) error {
+		delete(i.Request.Headers, "Authorization")
+		return nil
+	}
+	rec.AddHook(rmSecretsHook, recorder.AfterCaptureHook)
+	Expect(err).NotTo(HaveOccurred())
+	vcrRecorder = rec
+	if err0 == nil {
+		c, err := NewGitHubClientFromInstallationCredentials(ctx, *instCreds, vcrRecorder)
+		Expect(err).NotTo(HaveOccurred())
+		ghClient = c
+	} else if err1 == nil {
+		c, err := NewGitHubClientFromOauthCredentials(ctx, *oauthCreds, vcrRecorder)
+		Expect(err).NotTo(HaveOccurred())
+		ghClient = c
+	} else {
+		fmt.Fprintf(os.Stderr, "unable to load GitHub creds: %v\n", errors.Join(err0, err1))
+		fmt.Fprint(os.Stderr, "continuing in replay only mode\n")
+		recorderMode = recorder.ModeReplayOnly
+		c, err := gh.NewClient()
+		Expect(err).NotTo(HaveOccurred())
+		ghClient = c
+	}
 })
 
 var _ = AfterSuite(func() {
-	By("tearing down the test environment")
+	By("Tearing down the test environment")
 	err := testEnv.Stop()
+	Expect(err).NotTo(HaveOccurred())
+	err = vcrRecorder.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })

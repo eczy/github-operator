@@ -6,28 +6,46 @@ import (
 
 	gh "github.com/eczy/github-operator/internal/github"
 	"github.com/google/go-github/v60/github"
+	"github.com/shurcooL/githubv4"
 )
+
+// TODO: custom error types for this functionality
+// TODO: functional interface for create, update, delete resources with this mock github
+// instead of nested map creations in mocked api functions
 
 var _ GitHubRequester = &TestGitHubClient{}
 
 type TestOrganization struct {
-	TeamById      map[int64]*github.Team
-	TeamBySlug    map[string]*github.Team
-	TeamIdCounter int64
 
+	// underlying org
 	GitHubOrganization *github.Organization
 
-	Repositories        map[string]*github.Repository
-	RepositoryIdCounter int64
+	// counters
+	teamIdCounter             int64
+	repositoryIdCounter       int64
+	branchProtectionIdCounter int64
+
+	// teams
+	TeamById   map[int64]*github.Team
+	TeamBySlug map[string]*github.Team
+
+	// branch protection
+	BranchProtectionByRepo map[string]map[string]*gh.BranchProtection
+
+	// repository
+	Repositories map[string]*github.Repository
 }
 
 func NewTestOrganization(login string, id int64) *TestOrganization {
 	return &TestOrganization{
-		TeamById:            map[int64]*github.Team{},
-		TeamBySlug:          map[string]*github.Team{},
-		TeamIdCounter:       0,
-		RepositoryIdCounter: 0,
-		Repositories:        map[string]*github.Repository{},
+		teamIdCounter:             0,
+		repositoryIdCounter:       0,
+		branchProtectionIdCounter: 0,
+
+		TeamById:               map[int64]*github.Team{},
+		TeamBySlug:             map[string]*github.Team{},
+		BranchProtectionByRepo: map[string]map[string]*gh.BranchProtection{},
+		Repositories:           map[string]*github.Repository{},
 		GitHubOrganization: &github.Organization{
 			Login: github.String(login),
 			ID:    github.Int64(id),
@@ -41,10 +59,72 @@ type TestGitHubClient struct {
 	OrgsById     map[int64]*TestOrganization
 	OrgIdCounter int64
 
-	UserRepos       map[string]map[string]*github.Repository
-	UserRepoCounter int64
+	UserRepos                          map[string]map[string]*github.Repository
+	UserRepoCounter                    int64
+	UserRepoBranchProtectionByRepoName map[string]map[string]map[string]*gh.BranchProtection
 
 	AuthenticatedUser *string
+
+	BranchProtectionByNodeId map[string]*gh.BranchProtection
+}
+
+// GetBranchProtection implements GitHubRequester.
+func (tghc *TestGitHubClient) GetBranchProtection(ctx context.Context, nodeId string) (*gh.BranchProtection, error) {
+	if bp, ok := tghc.BranchProtectionByNodeId[nodeId]; ok {
+		return bp, nil
+	}
+	return nil, fmt.Errorf("no branch protection found for node id '%s'", nodeId)
+}
+
+// GetBranchProtectionByOwnerRepoPattern implements GitHubRequester.
+func (tghc *TestGitHubClient) GetBranchProtectionByOwnerRepoPattern(ctx context.Context, repositoryOwner string, repositoryName string, pattern string) (*gh.BranchProtection, error) {
+	if org, ok := tghc.OrgsBySlug[repositoryOwner]; ok {
+		if rules, ok := org.BranchProtectionByRepo[repositoryName]; ok {
+			if bp, ok := rules[pattern]; ok {
+				return bp, nil
+			}
+			return nil, fmt.Errorf("no rule matching pattern '%s' found for repo '%s' in org '%s'", pattern, repositoryName, repositoryOwner)
+		}
+		return nil, fmt.Errorf("no rules for repo '%s' found in org '%s'", repositoryName, repositoryOwner)
+	} else if repos, ok := tghc.UserRepoBranchProtectionByRepoName[repositoryOwner]; ok {
+		if rules, ok := repos[repositoryName]; ok {
+			if bp, ok := rules[pattern]; ok {
+				return bp, nil
+			}
+			return nil, fmt.Errorf("no rule matching pattern '%s' found for user '%s'", pattern, repositoryOwner)
+		}
+		return nil, fmt.Errorf("no repo '%s' found for user '%s'", repositoryName, repositoryOwner)
+
+	}
+	return nil, fmt.Errorf("repository owner '%s' not found", repositoryOwner)
+}
+
+// CreateBranchProtection implements GitHubRequester.
+func (tghc *TestGitHubClient) CreateBranchProtection(ctx context.Context, input *githubv4.CreateBranchProtectionRuleInput) (*gh.BranchProtection, error) {
+	panic("unimplemented")
+}
+
+// DeleteBranchProtection implements GitHubRequester.
+func (tghc *TestGitHubClient) DeleteBranchProtection(ctx context.Context, input *githubv4.DeleteBranchProtectionRuleInput) error {
+	panic("unimplemented")
+}
+
+// UpdateBranchProtection implements GitHubRequester.
+func (tghc *TestGitHubClient) UpdateBranchProtection(ctx context.Context, input *githubv4.UpdateBranchProtectionRuleInput) (*gh.BranchProtection, error) {
+	nodeId, ok := input.BranchProtectionRuleID.(string)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert branch protection rule ID to string")
+	}
+	if bp, ok := tghc.BranchProtectionByNodeId[nodeId]; ok {
+		if input.Pattern != (*githubv4.String)(&bp.Pattern) {
+			bp.Pattern = string(*input.Pattern)
+		}
+		if input.RequiresApprovingReviews != (*githubv4.Boolean)(&bp.RequiresApprovingReviews) {
+			bp.RequiresApprovingReviews = bool(*input.RequiresApprovingReviews)
+		}
+		tghc.BranchProtectionByNodeId[nodeId] = bp
+	}
+	return nil, fmt.Errorf("no branch protection rule found for ID '%s'", input.BranchProtectionRuleID)
 }
 
 // UpdateRepositoryTopics implements GitHubRequester.
@@ -73,8 +153,8 @@ func (tghc *TestGitHubClient) CreateRepositoryFromTemplate(ctx context.Context, 
 			}
 
 			repo := *repo
-			repo.ID = &org.RepositoryIdCounter
-			org.RepositoryIdCounter += 1
+			repo.ID = &org.repositoryIdCounter
+			org.repositoryIdCounter += 1
 			repo.Name = req.Name
 
 			if req.Owner != nil {
@@ -107,11 +187,11 @@ func (tghc *TestGitHubClient) CreateRepositoryFromTemplate(ctx context.Context, 
 // CreateUserRepository implements GitHubRequester.
 func (tghc *TestGitHubClient) CreateRepository(ctx context.Context, org string, create *github.Repository) (*github.Repository, error) {
 	if organization, ok := tghc.OrgsBySlug[org]; ok {
-		create.ID = &organization.RepositoryIdCounter
+		create.ID = &organization.repositoryIdCounter
 		create.Owner = &github.User{
 			Login: github.String(org),
 		}
-		organization.RepositoryIdCounter += 1
+		organization.repositoryIdCounter += 1
 		organization.Repositories[*create.Name] = create
 		return create, nil
 	} else if org == "" {
@@ -277,8 +357,8 @@ func (tghc *TestGitHubClient) CreateTeam(ctx context.Context, org string, newTea
 		if _, ok := organization.TeamBySlug[newTeam.Name]; ok {
 			return nil, fmt.Errorf("team '%s' already exists in org '%s'", newTeam.Name, org)
 		}
-		id := organization.TeamIdCounter
-		organization.TeamIdCounter += 1
+		id := organization.teamIdCounter
+		organization.teamIdCounter += 1
 		team := &github.Team{
 			ID:          github.Int64(id),
 			Name:        &newTeam.Name,

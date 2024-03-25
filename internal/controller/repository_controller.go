@@ -37,12 +37,17 @@ var (
 )
 
 type RepositoryRequester interface {
-	GetRepositoryBySlug(ctx context.Context, owner string, name string) (*github.Repository, error)
+	RepositoryGetter
+
 	UpdateRepositoryBySlug(ctx context.Context, owner, name string, update *github.Repository) (*github.Repository, error)
 	CreateRepository(ctx context.Context, org string, create *github.Repository) (*github.Repository, error)
 	CreateRepositoryFromTemplate(ctx context.Context, templateOwner string, templateRepository string, req *github.TemplateRepoRequest) (*github.Repository, error)
 	DeleteRepositoryBySlug(ctx context.Context, owner, name string) error
 	UpdateRepositoryTopics(ctx context.Context, owner string, repo string, topics []string) ([]string, error)
+}
+
+type RepositoryGetter interface {
+	GetRepositoryBySlug(ctx context.Context, owner string, name string) (*github.Repository, error)
 }
 
 // RepositoryReconciler reconciles a Repository object

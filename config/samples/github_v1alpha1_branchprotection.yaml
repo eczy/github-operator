@@ -1,0 +1,12 @@
+apiVersion: github.github-operator.eczy.io/v1alpha1
+kind: BranchProtection
+metadata:
+  labels:
+    app.kubernetes.io/name: branchprotection
+    app.kubernetes.io/instance: branchprotection-sample
+    app.kubernetes.io/part-of: github-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: github-operator
+  name: branchprotection-sample
+spec:
+  # TODO(user): Add fields here

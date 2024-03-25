@@ -1,0 +1,287 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: branchprotections.github.github-operator.eczy.io
+spec:
+  group: github.github-operator.eczy.io
+  names:
+    kind: BranchProtection
+    listKind: BranchProtectionList
+    plural: branchprotections
+    singular: branchprotection
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: BranchProtection is the Schema for the branchprotections API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: BranchProtectionSpec defines the desired state of BranchProtection
+            properties:
+              allows_deletions:
+                type: boolean
+              allows_force_pushes:
+                type: boolean
+              blocks_creations:
+                type: boolean
+              branch_pattern:
+                type: string
+              bypass_force_push_apps:
+                items:
+                  type: string
+                type: array
+              bypass_force_push_teams:
+                items:
+                  type: string
+                type: array
+              bypass_force_push_users:
+                items:
+                  type: string
+                type: array
+              bypass_pull_request_apps:
+                items:
+                  type: string
+                type: array
+              bypass_pull_request_teams:
+                items:
+                  type: string
+                type: array
+              bypass_pull_request_users:
+                items:
+                  type: string
+                type: array
+              dismisses_stale_reviews:
+                type: boolean
+              is_admin_enforced:
+                type: boolean
+              lock_allows_fetch_and_merge:
+                type: boolean
+              lock_branch:
+                type: boolean
+              push_allowance_apps:
+                items:
+                  type: string
+                type: array
+              push_allowance_teams:
+                items:
+                  type: string
+                type: array
+              push_allowance_users:
+                items:
+                  type: string
+                type: array
+              repository_name:
+                type: string
+              repository_owner:
+                type: string
+              require_last_push_approval:
+                type: boolean
+              required_approving_review_count:
+                type: integer
+              required_deployment_environments:
+                items:
+                  type: string
+                type: array
+              required_status_check_contexts:
+                items:
+                  type: string
+                type: array
+              required_status_checks:
+                items:
+                  properties:
+                    app_id:
+                      type: string
+                    context:
+                      type: string
+                  required:
+                  - context
+                  type: object
+                type: array
+              requires_approving_reviews:
+                type: boolean
+              requires_code_owner_reviews:
+                type: boolean
+              requires_commit_signatures:
+                type: boolean
+              requires_conversation_resolution:
+                type: boolean
+              requires_deployments:
+                type: boolean
+              requires_linear_history:
+                type: boolean
+              requires_status_checks:
+                type: boolean
+              requires_strict_status_checks:
+                type: boolean
+              restricts_pushes:
+                type: boolean
+              restricts_review_dismissals:
+                type: boolean
+              review_dismissal_apps:
+                items:
+                  type: string
+                type: array
+              review_dismissal_teams:
+                items:
+                  type: string
+                type: array
+              review_dismissal_users:
+                items:
+                  type: string
+                type: array
+            required:
+            - branch_pattern
+            - repository_name
+            - repository_owner
+            type: object
+          status:
+            description: BranchProtectionStatus defines the observed state of BranchProtection
+            properties:
+              allows_deletions:
+                type: boolean
+              allows_force_pushes:
+                type: boolean
+              blocks_creations:
+                type: boolean
+              branch_pattern:
+                type: string
+              bypass_force_push_apps:
+                items:
+                  type: string
+                type: array
+              bypass_force_push_teams:
+                items:
+                  type: string
+                type: array
+              bypass_force_push_users:
+                items:
+                  type: string
+                type: array
+              bypass_pull_request_apps:
+                items:
+                  type: string
+                type: array
+              bypass_pull_request_teams:
+                items:
+                  type: string
+                type: array
+              bypass_pull_request_users:
+                items:
+                  type: string
+                type: array
+              dismisses_stale_reviews:
+                type: boolean
+              id:
+                type: string
+              is_admin_enforced:
+                type: boolean
+              last_update_timestamp:
+                description: |-
+                  INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+                  Important: Run "make" to regenerate code after modifying this file
+                format: date-time
+                type: string
+              lock_allows_fetch_and_merge:
+                type: boolean
+              lock_branch:
+                type: boolean
+              push_allowance_apps:
+                items:
+                  type: string
+                type: array
+              push_allowance_teams:
+                items:
+                  type: string
+                type: array
+              push_allowance_users:
+                items:
+                  type: string
+                type: array
+              repository_id:
+                type: string
+              repository_name:
+                type: string
+              repository_owner:
+                type: string
+              require_last_push_approval:
+                type: boolean
+              required_approving_review_count:
+                type: integer
+              required_deployment_environments:
+                items:
+                  type: string
+                type: array
+              required_status_check_contexts:
+                items:
+                  type: string
+                type: array
+              required_status_checks:
+                items:
+                  properties:
+                    app_id:
+                      type: string
+                    context:
+                      type: string
+                  required:
+                  - context
+                  type: object
+                type: array
+              requires_approving_reviews:
+                type: boolean
+              requires_code_owner_reviews:
+                type: boolean
+              requires_commit_signatures:
+                type: boolean
+              requires_conversation_resolution:
+                type: boolean
+              requires_deployments:
+                type: boolean
+              requires_linear_history:
+                type: boolean
+              requires_status_checks:
+                type: boolean
+              requires_strict_status_checks:
+                type: boolean
+              restricts_pushes:
+                type: boolean
+              restricts_review_dismissals:
+                type: boolean
+              review_dismissal_apps:
+                items:
+                  type: string
+                type: array
+              review_dismissal_teams:
+                items:
+                  type: string
+                type: array
+              review_dismissal_users:
+                items:
+                  type: string
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

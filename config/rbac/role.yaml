@@ -7,6 +7,32 @@ rules:
 - apiGroups:
   - github.github-operator.eczy.io
   resources:
+  - branchprotections
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - github.github-operator.eczy.io
+  resources:
+  - branchprotections/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - github.github-operator.eczy.io
+  resources:
+  - branchprotections/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - github.github-operator.eczy.io
+  resources:
   - organizations
   verbs:
   - create

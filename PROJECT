@@ -43,4 +43,13 @@ resources:
   kind: Organization
   path: github.com/eczy/github-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: github-operator.eczy.io
+  group: github
+  kind: BranchProtection
+  path: github.com/eczy/github-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

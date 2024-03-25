@@ -5,6 +5,7 @@ resources:
 - bases/github.github-operator.eczy.io_teams.yaml
 - bases/github.github-operator.eczy.io_repositories.yaml
 - bases/github.github-operator.eczy.io_organizations.yaml
+- bases/github.github-operator.eczy.io_branchprotections.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:
@@ -13,6 +14,7 @@ patches:
 #- path: patches/webhook_in_teams.yaml
 #- path: patches/webhook_in_repositories.yaml
 #- path: patches/webhook_in_organizations.yaml
+#- path: patches/webhook_in_branchprotections.yaml
 #+kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.
@@ -20,6 +22,7 @@ patches:
 #- path: patches/cainjection_in_teams.yaml
 #- path: patches/cainjection_in_repositories.yaml
 #- path: patches/cainjection_in_organizations.yaml
+#- path: patches/cainjection_in_branchprotections.yaml
 #+kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # [WEBHOOK] To enable webhook, uncomment the following section

@@ -3,4 +3,5 @@ resources:
 - github_v1alpha1_team.yaml
 - github_v1alpha1_repository.yaml
 - github_v1alpha1_organization.yaml
+- github_v1alpha1_branchprotection.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
