@@ -254,7 +254,7 @@ func (c *Client) GetBranchProtection(ctx context.Context, nodeId string) (*Branc
 		"nodeId": nodeId,
 	}
 
-	err := c.graphql.Query(ctx, q, variables)
+	err := c.graphql.Query(ctx, &q, variables)
 	if err != nil {
 		return nil, err
 	}
@@ -418,8 +418,8 @@ func (c *Client) GetBranchProtectionByOwnerRepoPattern(ctx context.Context, repo
 	}
 
 	variables := map[string]interface{}{
-		"repositoryOwner":            repositoryOwner,
-		"repositoryName":             repositoryName,
+		"repositoryOwner":            githubv4.String(repositoryOwner),
+		"repositoryName":             githubv4.String(repositoryName),
 		"branchProtectionRuleCursor": (*githubv4.String)(nil),
 	}
 

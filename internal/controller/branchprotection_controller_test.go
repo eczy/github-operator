@@ -98,4 +98,67 @@ var _ = Describe("BranchProtection Controller", func() {
 			// Example: If you expect a certain status condition after reconciliation, verify it here.
 		})
 	})
+	Context("When creating a resource of Kind BranchProtection", func() {
+		BeforeEach(func() {
+			By("Creating the custom resource for the Kind BranchProtection")
+			err := k8sClient.Get(ctx, typeNamespacedName, branchprotection)
+			if err != nil && errors.IsNotFound(err) {
+				resource := &githubv1alpha1.BranchProtection{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceName,
+						Namespace: "default",
+					},
+					Spec: githubv1alpha1.BranchProtectionSpec{
+						RepositoryOwner: testOrganization,
+						RepositoryName:  testRepoName,
+						Pattern:         "main",
+					},
+				}
+				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			}
+
+			By("Creating an external repository for testing")
+			_, err = ghClient.CreateRepository(ctx, testOrganization, &github.Repository{
+				Name: &testRepoName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			// TODO(user): Cleanup logic after each test, like removing the resource instance.
+			resource := &githubv1alpha1.BranchProtection{}
+			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Cleanup the specific resource instance BranchProtection")
+			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+			By("Cleanup the test repository")
+			err = ghClient.DeleteRepositoryBySlug(ctx, testOrganization, testRepoName)
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("should successfully reconcile the resource", func() {
+			By("Checking the branch protection rule doesn't exist")
+			_, err := ghClient.GetBranchProtectionByOwnerRepoPattern(ctx, testOrganization, testRepoName, "main")
+			Expect(err).To(HaveOccurred())
+
+			By("Reconciling the created resource")
+			controllerReconciler := &BranchProtectionReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
+			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			By("Checking the branch protection rule exists")
+			_, err = ghClient.GetBranchProtectionByOwnerRepoPattern(ctx, testOrganization, testRepoName, "main")
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
 })
