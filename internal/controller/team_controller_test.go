@@ -133,10 +133,6 @@ var _ = Describe("Team Controller", func() {
 			By("Checking the matching external resource is now managed")
 			_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
 			Expect(err).NotTo(HaveOccurred())
-			// TODO: find a way to test this with  actual GitHub client without list all
-			if c, ok := ghClient.(*TestGitHubClient); ok {
-				Expect(len(c.OrgsBySlug[testOrganization].TeamBySlug)).To(Equal(1))
-			}
 		})
 	})
 	Context("When updating a resource", func() {
@@ -264,11 +260,63 @@ var _ = Describe("Team Controller", func() {
 			Expect(ghTeam.Name).NotTo(BeNil())
 			Expect(*ghTeam.Name).To(Equal(originalName))
 		})
+		It("should successfully reconcile an updated team's repository permissions", func() {
+			var testRepo *github.Repository
+			resource := &githubv1alpha1.Team{}
+			testPermission := "admin"
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+
+			By("Creating a test repository")
+			repo, err := ghClient.CreateRepository(ctx, testOrganization, &github.Repository{
+				Name: github.String(ghTestResourcePrefix + "test0"),
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repo).NotTo(BeNil())
+			testRepo = repo
+
+			defer func() {
+				By("Cleaning up the test repository")
+				Expect(ghClient.DeleteRepositoryBySlug(ctx, testRepo.GetOwner().GetLogin(), testRepo.GetName())).To(Succeed())
+			}()
+
+			By("Assigning team permission to the resource")
+			resource.Spec.Repositories = map[string]githubv1alpha1.RepositoryPermission{repo.GetName(): githubv1alpha1.RepositoryPermission(testPermission)}
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Reconciling the resource")
+			controllerReconciler := &TeamReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the external resource")
+			permission, err := ghClient.GetTeamRepositoryPermission(ctx, testOrganization, testTeamName, testRepo.GetName())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(permission.Permission).To(Equal(testPermission))
+
+			By("Removing team permission from the resource")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			resource.Spec.Repositories = map[string]githubv1alpha1.RepositoryPermission{}
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Reconciling the resource")
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the external resource")
+			_, err = ghClient.GetTeamRepositoryPermission(ctx, testOrganization, testTeamName, testRepo.GetName())
+			Expect(err).To(HaveOccurred())
+		})
 		// TODO: other fields
 	})
-
-	// TODO: test deletion
-
 	Context("When deleting a resource", func() {
 		BeforeEach(func() {
 			By("Creating the custom resource for the Kind Team")

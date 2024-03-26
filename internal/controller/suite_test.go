@@ -150,6 +150,9 @@ var _ = BeforeSuite(func() {
 	})
 	rmSecretsHook := func(i *cassette.Interaction) error {
 		delete(i.Request.Headers, "Authorization")
+		if path.Base(i.Request.URL) == "access_tokens" {
+			i.DiscardOnSave = true
+		}
 		return nil
 	}
 	rec.AddHook(rmSecretsHook, recorder.AfterCaptureHook)

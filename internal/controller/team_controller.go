@@ -44,6 +44,11 @@ type TeamRequester interface {
 	UpdateTeamById(ctx context.Context, org, teamId int64, newTeam github.NewTeam) (*github.Team, error)
 	DeleteTeamBySlug(ctx context.Context, org, slug string) error
 	DeleteTeamById(ctx context.Context, org, teamId int64) error
+
+	GetTeamRepositoryPermission(ctx context.Context, org, slug, repoName string) (*gh.TeamRepositoryPermission, error)
+	GetTeamRepositoryPermissions(ctx context.Context, org, slug string) ([]*gh.TeamRepositoryPermission, error)
+	UpdateTeamRepositoryPermissions(ctx context.Context, org, slug string, repoName, permission string) error
+	RemoveTeamRepositoryPermissions(ctx context.Context, org, slug string, repoName string) error
 }
 
 // TeamReconciler reconciles a Team object
@@ -275,6 +280,60 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 			ParentTeamSlug: parentSlug,
 		}
 
+		// update status
+		if err := r.Status().Update(ctx, team); err != nil {
+			log.Error(err, "error updating Team status", "name", team.Spec.Name)
+		}
+	}
+
+	// Repositories
+	log.Info("updating team repository permissions")
+	trps, err := r.GitHubClient.GetTeamRepositoryPermissions(ctx, ghTeam.GetOrganization().GetLogin(), ghTeam.GetSlug())
+	if err != nil {
+		log.Error(err, "error getting team repository permissions")
+		return err
+	}
+
+	statusRepoPermissions := map[string]githubv1alpha1.RepositoryPermission{}
+	needsUpdate = false
+
+	for _, trp := range trps {
+		if permission, ok := team.Spec.Repositories[trp.RepositoryName]; ok {
+			if permission != githubv1alpha1.RepositoryPermission(trp.Permission) {
+				log.Info("updating team repository permission", "team", team.GetName(), "repository", trp.RepositoryName, "permission", permission)
+				err := r.GitHubClient.UpdateTeamRepositoryPermissions(ctx, ghTeam.GetOrganization().GetLogin(), ghTeam.GetSlug(), trp.RepositoryName, string(permission))
+				if err != nil {
+					log.Error(err, "error updating team repository permissions")
+					return err
+				}
+				statusRepoPermissions[trp.RepositoryName] = permission
+				needsUpdate = true
+			}
+		} else {
+			log.Info("removing team repository permission", "team", team.GetName(), "repository", trp.RepositoryName)
+			err := r.GitHubClient.RemoveTeamRepositoryPermissions(ctx, ghTeam.GetOrganization().GetLogin(), ghTeam.GetSlug(), trp.RepositoryName)
+			if err != nil {
+				log.Error(err, "error removing team repository permissions")
+				return err
+			}
+			needsUpdate = true
+		}
+	}
+
+	for repository, permission := range team.Spec.Repositories {
+		if _, ok := statusRepoPermissions[repository]; !ok {
+			err := r.GitHubClient.UpdateTeamRepositoryPermissions(ctx, ghTeam.GetOrganization().GetLogin(), ghTeam.GetSlug(), repository, string(permission))
+			if err != nil {
+				log.Error(err, "error updating team repository permissions")
+				return err
+			}
+			statusRepoPermissions[repository] = permission
+			needsUpdate = true
+		}
+	}
+
+	if needsUpdate {
+		team.Status.Repositories = statusRepoPermissions
 		// update status
 		if err := r.Status().Update(ctx, team); err != nil {
 			log.Error(err, "error updating Team status", "name", team.Spec.Name)
