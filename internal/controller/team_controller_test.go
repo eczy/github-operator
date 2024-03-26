@@ -299,12 +299,24 @@ var _ = Describe("Team Controller", func() {
 			permission, err := ghClient.GetTeamRepositoryPermission(ctx, testOrganization, testTeamName, testRepo.GetName())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(permission.Permission).To(Equal(testPermission))
+
+			By("Removing team permission from the resource")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			resource.Spec.Repositories = map[string]githubv1alpha1.RepositoryPermission{}
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Reconciling the resource")
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the external resource")
+			_, err = ghClient.GetTeamRepositoryPermission(ctx, testOrganization, testTeamName, testRepo.GetName())
+			Expect(err).To(HaveOccurred())
 		})
 		// TODO: other fields
 	})
-
-	// TODO: test deletion
-
 	Context("When deleting a resource", func() {
 		BeforeEach(func() {
 			By("Creating the custom resource for the Kind Team")

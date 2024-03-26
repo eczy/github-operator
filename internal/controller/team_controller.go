@@ -299,7 +299,6 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 
 	for _, trp := range trps {
 		if permission, ok := team.Spec.Repositories[trp.RepositoryName]; ok {
-			log.Info("spec perm", permission, "found perm", trp.Permission)
 			if permission != githubv1alpha1.RepositoryPermission(trp.Permission) {
 				log.Info("updating team repository permission", "team", team.GetName(), "repository", trp.RepositoryName, "permission", permission)
 				err := r.GitHubClient.UpdateTeamRepositoryPermissions(ctx, ghTeam.GetOrganization().GetLogin(), ghTeam.GetSlug(), trp.RepositoryName, string(permission))
