@@ -76,6 +76,10 @@ spec:
                 - secret
                 - closed
                 type: string
+              repositories:
+                additionalProperties:
+                  type: string
+                type: object
             required:
             - name
             - organization
@@ -122,6 +126,10 @@ spec:
                 - secret
                 - closed
                 type: string
+              repositories:
+                additionalProperties:
+                  type: string
+                type: object
               slug:
                 type: string
             type: object

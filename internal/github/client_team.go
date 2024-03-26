@@ -75,6 +75,21 @@ func (c *Client) DeleteTeamById(ctx context.Context, org, slug int64) error {
 	return nil
 }
 
+// repository permissions in greatest to least order - for local use
+var repositoryPermissions = []string{"admin", "maintain", "push", "triage", "pull"}
+
+// Team repository permissions
+func maxPermissionFromMap(permissionMap map[string]bool) (string, error) {
+	for _, perm := range repositoryPermissions {
+		if hasPerm, ok := permissionMap[perm]; ok {
+			if hasPerm {
+				return perm, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no valid permission found in permission map")
+}
+
 type TeamRepositoryPermission struct {
 	OrganizationLogin string
 	TeamSlug          string
@@ -83,7 +98,29 @@ type TeamRepositoryPermission struct {
 	Permission        string
 }
 
-func (c *Client) GetTeamRepositoryPermissions(ctx context.Context, org, slug string) ([]TeamRepositoryPermission, error) {
+// assume repo is in the same org as team
+func (c *Client) GetTeamRepositoryPermission(ctx context.Context, org, slug, repoName string) (*TeamRepositoryPermission, error) {
+	repo, _, err := c.rest.Teams.IsTeamRepoBySlug(ctx, org, slug, org, repoName)
+	if err != nil {
+		return nil, err
+	}
+
+	permission, err := maxPermissionFromMap(repo.GetPermissions())
+	if err != nil {
+		return nil, err
+	}
+
+	return &TeamRepositoryPermission{
+		OrganizationLogin: org,
+		TeamSlug:          slug,
+		RepositoryName:    repo.GetName(),
+		RepositoryId:      repo.GetNodeID(),
+		Permission:        permission,
+	}, nil
+}
+
+// assume repo is in the same org as team
+func (c *Client) GetTeamRepositoryPermissions(ctx context.Context, org, slug string) ([]*TeamRepositoryPermission, error) {
 	var q struct {
 		Organization struct {
 			Team struct {
@@ -97,18 +134,18 @@ func (c *Client) GetTeamRepositoryPermissions(ctx context.Context, org, slug str
 					}
 					// TODO: move PageInfo to a common spot
 					PageInfo PageInfo
-				} `graphql:"repositories:(first: 100, after: $cursor)"`
+				} `graphql:"repositories(first: 100, after: $cursor)"`
 			} `graphql:"team(slug: $slug)"`
 		} `graphql:"organization(login: $login)"`
 	}
 
 	variables := map[string]interface{}{
-		"login":  org,
-		"slug":   slug,
+		"login":  githubv4.String(org),
+		"slug":   githubv4.String(slug),
 		"cursor": (*githubv4.String)(nil),
 	}
 
-	out := []TeamRepositoryPermission{}
+	out := []*TeamRepositoryPermission{}
 	for {
 		err := c.graphql.Query(ctx, &q, variables)
 		if err != nil {
@@ -117,7 +154,7 @@ func (c *Client) GetTeamRepositoryPermissions(ctx context.Context, org, slug str
 
 		for i, edge := range q.Organization.Team.Repositories.Edges {
 			node := q.Organization.Team.Repositories.Nodes[i]
-			out = append(out, TeamRepositoryPermission{
+			out = append(out, &TeamRepositoryPermission{
 				OrganizationLogin: org,
 				TeamSlug:          slug,
 				RepositoryName:    node.Name,
@@ -126,10 +163,10 @@ func (c *Client) GetTeamRepositoryPermissions(ctx context.Context, org, slug str
 			})
 		}
 
-		if q.Organization.Team.Repositories.PageInfo.HasNextPage {
+		if !q.Organization.Team.Repositories.PageInfo.HasNextPage {
 			break
 		}
-		variables["cursor"] = q.Organization.Team.Repositories.PageInfo.EndCursor
+		variables["cursor"] = &q.Organization.Team.Repositories.PageInfo.EndCursor
 	}
 
 	return out, nil
@@ -142,7 +179,7 @@ func (c *Client) UpdateTeamRepositoryPermissions(ctx context.Context, org, slug 
 	return err
 }
 
-func (c *Client) RemoveTeamRepositoryPermissions(ctx context.Context, org, slug string, repoName, permission string) error {
+func (c *Client) RemoveTeamRepositoryPermissions(ctx context.Context, org, slug string, repoName string) error {
 	_, err := c.rest.Teams.RemoveTeamRepoBySlug(ctx, org, slug, org, repoName)
 	return err
 }
