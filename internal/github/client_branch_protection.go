@@ -32,14 +32,6 @@ type BranchProtection struct {
 		Owner      struct {
 			Login string
 			Id    string
-			// User  struct {
-			// 	Id    string
-			// 	Login string
-			// } `graphql:"... on User"`
-			// Organization struct {
-			// 	Id    string
-			// 	Login string
-			// } `graphql:"... on Organization"`
 		}
 	}
 	RequireLastPushApproval        bool
@@ -396,7 +388,7 @@ func (c *Client) GetBranchProtection(ctx context.Context, nodeId string) (*Branc
 		}
 	}
 
-	return nil, err
+	return &q.Node.BranchProtectionRule, err
 }
 
 // this is inefficient and should ideally not be used
@@ -469,7 +461,9 @@ func (c *Client) UpdateBranchProtection(ctx context.Context, input *githubv4.Upd
 
 func (c *Client) DeleteBranchProtection(ctx context.Context, input *githubv4.DeleteBranchProtectionRuleInput) error {
 	var m struct {
-		DeleteBranchProtectionRule struct{} `graphql:"deleteBranchProtectionRule(input: $input)"`
+		DeleteBranchProtectionRule struct {
+			ClientMutationId string // can't return nothing
+		} `graphql:"deleteBranchProtectionRule(input: $input)"`
 	}
-	return c.graphql.Mutate(ctx, &m, input, nil)
+	return c.graphql.Mutate(ctx, &m, *input, nil)
 }

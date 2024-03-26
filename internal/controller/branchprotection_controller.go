@@ -32,6 +32,10 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
+var (
+	branchProtectionFinalizerName = "github.github-operator.eczy.io/branch-protection-finalizer"
+)
+
 type BranchProtectionRequester interface {
 	RepositoryGetter // needed to create new branch protection rules
 
@@ -122,8 +126,8 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if r.DeleteOnResourceDeletion {
 		if bp.ObjectMeta.DeletionTimestamp.IsZero() {
 			// not being deleted
-			if !controllerutil.ContainsFinalizer(bp, teamFinalizerName) {
-				controllerutil.AddFinalizer(bp, teamFinalizerName)
+			if !controllerutil.ContainsFinalizer(bp, branchProtectionFinalizerName) {
+				controllerutil.AddFinalizer(bp, branchProtectionFinalizerName)
 				if err := r.Update(ctx, bp); err != nil {
 					return ctrl.Result{}, err
 				}
@@ -140,7 +144,7 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 				}
 			}
 
-			controllerutil.RemoveFinalizer(bp, teamFinalizerName)
+			controllerutil.RemoveFinalizer(bp, branchProtectionFinalizerName)
 			if err := r.Update(ctx, bp); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -186,6 +190,10 @@ func (r *BranchProtectionReconciler) updateBranchProtection(ctx context.Context,
 	needsUpdate := false
 
 	// Pattern
+	if bp.Spec.Pattern != ghBp.Pattern {
+		update.Pattern = (*githubv4.String)(&bp.Spec.Pattern)
+		needsUpdate = true
+	}
 
 	// AllowsDeletions
 	if ptrNonNilAndNotEqualTo(bp.Spec.AllowsDeletions, ghBp.AllowsDeletions) {
@@ -375,9 +383,36 @@ func (r *BranchProtectionReconciler) updateBranchProtection(ctx context.Context,
 		needsUpdate = true
 	}
 	// RequiredStatusChecks
-	if ptrNonNilAndNotEqualTo(bp.Spec.AllowsDeletions, ghBp.AllowsDeletions) {
-		panic("unimplemented")
+	ghChecks := map[string]gh.RequiredStatusCheckDescription{}
+	updateChecks := []githubv4.RequiredStatusCheckInput{}
+	requiredStatusChecksNeedUpdate := len(ghBp.RequiredStatusChecks) == len(bp.Spec.RequiredStatusChecks)
+	for _, check := range ghBp.RequiredStatusChecks {
+		ghChecks[check.Context] = check
 	}
+	for _, check := range bp.Spec.RequiredStatusChecks {
+		var appId githubv4.ID
+		if check.AppId != nil {
+			appId = check.AppId
+		}
+		updateChecks = append(updateChecks, githubv4.RequiredStatusCheckInput{
+			Context: githubv4.String(check.Context),
+			AppID:   &appId,
+		})
+		if ghCheck, ok := ghChecks[check.Context]; ok {
+			if ghCheck.Context != check.Context {
+				requiredStatusChecksNeedUpdate = true
+			} else if !ptrNonNilAndNotEqualTo(check.AppId, ghCheck.App.Id) {
+				requiredStatusChecksNeedUpdate = true
+			}
+		} else {
+			requiredStatusChecksNeedUpdate = true
+		}
+	}
+	if requiredStatusChecksNeedUpdate {
+		update.RequiredStatusChecks = &updateChecks
+		needsUpdate = true
+	}
+
 	// RequiresApprovingReviews
 	if ptrNonNilAndNotEqualTo(bp.Spec.RequiresApprovingReviews, ghBp.RequiresApprovingReviews) {
 		update.RequiresApprovingReviews = (*githubv4.Boolean)(bp.Spec.RequiresApprovingReviews)
@@ -542,6 +577,7 @@ func (r *BranchProtectionReconciler) deleteBranchProtection(ctx context.Context,
 	if bp.Status.Id == nil {
 		return fmt.Errorf("branch protection NodeID is nil")
 	}
+
 	return r.GitHubClient.DeleteBranchProtection(ctx, &githubv4.DeleteBranchProtectionRuleInput{
 		BranchProtectionRuleID: bp.Status.Id,
 	})
