@@ -44,6 +44,10 @@ type TeamRequester interface {
 	UpdateTeamById(ctx context.Context, org, teamId int64, newTeam github.NewTeam) (*github.Team, error)
 	DeleteTeamBySlug(ctx context.Context, org, slug string) error
 	DeleteTeamById(ctx context.Context, org, teamId int64) error
+
+	// GetTeamRepositoryPermissions(ctx context.Context, org, slug string) ([]*gh., error)
+	// UpdateTeamRepositoryPermission(ctx context.Context, org, slug string, permission githubv1alpha1.RepositoryPermission)
+	// RemoveTeamRepositoryPermission(ctx context.Context, org, slug string) error
 }
 
 // TeamReconciler reconciles a Team object
@@ -282,6 +286,11 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 	}
 
 	return nil
+}
+
+func (r *TeamReconciler) updateTeamRepositoryPermissions(ctx context.Context, team *githubv1alpha1.Team, ghTeam *github.Team) error {
+	log := log.FromContext(ctx)
+
 }
 
 func (r *TeamReconciler) deleteTeam(ctx context.Context, team *githubv1alpha1.Team) error {

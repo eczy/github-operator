@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-github/v60/github"
+	"github.com/shurcooL/githubv4"
 )
 
 // Teams
@@ -74,27 +75,74 @@ func (c *Client) DeleteTeamById(ctx context.Context, org, slug int64) error {
 	return nil
 }
 
-// Organizations
-
-func (c *Client) GetOrganization(ctx context.Context, login string) (*github.Organization, error) {
-	organization, resp, err := c.rest.Organizations.Get(ctx, login)
-	if resp.StatusCode == 404 {
-		return nil, &OrganizationNotFoundError{Login: &login}
-	} else if err != nil {
-		return nil, err
-	}
-	return organization, nil
+type TeamRepositoryPermission struct {
+	OrganizationLogin string
+	TeamSlug          string
+	RepositoryName    string
+	RepositoryId      string
+	Permission        string
 }
 
-func (c *Client) UpdateOrganization(ctx context.Context, login string, updateOrg *github.Organization) (*github.Organization, error) {
-	organization, _, err := c.rest.Organizations.Edit(ctx, login, updateOrg)
-	if err != nil {
-		return nil, err
+func (c *Client) GetTeamRepositoryPermissions(ctx context.Context, org, slug string) ([]TeamRepositoryPermission, error) {
+	var q struct {
+		Organization struct {
+			Team struct {
+				Repositories struct {
+					Edges []struct {
+						Permission string
+					}
+					Nodes []struct {
+						Id   string
+						Name string
+					}
+					// TODO: move PageInfo to a common spot
+					PageInfo PageInfo
+				} `graphql:"repositories:(first: 100, after: $cursor)"`
+			} `graphql:"team(slug: $slug)"`
+		} `graphql:"organization(login: $login)"`
 	}
-	return organization, nil
+
+	variables := map[string]interface{}{
+		"login":  org,
+		"slug":   slug,
+		"cursor": (*githubv4.String)(nil),
+	}
+
+	out := []TeamRepositoryPermission{}
+	for {
+		err := c.graphql.Query(ctx, &q, variables)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, edge := range q.Organization.Team.Repositories.Edges {
+			node := q.Organization.Team.Repositories.Nodes[i]
+			out = append(out, TeamRepositoryPermission{
+				OrganizationLogin: org,
+				TeamSlug:          slug,
+				RepositoryName:    node.Name,
+				RepositoryId:      node.Id,
+				Permission:        edge.Permission,
+			})
+		}
+
+		if q.Organization.Team.Repositories.PageInfo.HasNextPage {
+			break
+		}
+		variables["cursor"] = q.Organization.Team.Repositories.PageInfo.EndCursor
+	}
+
+	return out, nil
 }
 
-func (c *Client) DeleteOrganization(ctx context.Context, login string) error {
-	_, err := c.rest.Organizations.Delete(ctx, login)
+func (c *Client) UpdateTeamRepositoryPermissions(ctx context.Context, org, slug string, repoName, permission string) error {
+	_, err := c.rest.Teams.AddTeamRepoBySlug(ctx, org, slug, org, repoName, &github.TeamAddTeamRepoOptions{
+		Permission: permission,
+	})
+	return err
+}
+
+func (c *Client) RemoveTeamRepositoryPermissions(ctx context.Context, org, slug string, repoName, permission string) error {
+	_, err := c.rest.Teams.RemoveTeamRepoBySlug(ctx, org, slug, org, repoName)
 	return err
 }
