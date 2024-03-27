@@ -86,9 +86,9 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	var observed *gh.BranchProtection
 	// try to fetch external resource
-	if bp.Status.Id != nil {
-		log.Info("getting branch protection", "id", bp.Status.Id)
-		ghBp, err := r.GitHubClient.GetBranchProtection(ctx, *bp.Status.Id)
+	if bp.Status.NodeId != nil {
+		log.Info("getting branch protection", "id", bp.Status.NodeId)
+		ghBp, err := r.GitHubClient.GetBranchProtection(ctx, *bp.Status.NodeId)
 		if err != nil {
 			// TODO: determine if the error is a "not found" error vs another type of error
 			log.Info(err.Error())
@@ -134,7 +134,7 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			}
 		} else {
 			// being deleted
-			log.Info("deleting branch protection", "node_id", bp.Status.Id)
+			log.Info("deleting branch protection", "node_id", bp.Status.NodeId)
 			if bp.Status.LastUpdateTimestamp != nil {
 				// if we have never resolved this resource before, don't
 				// touch external state
@@ -524,8 +524,8 @@ func (r *BranchProtectionReconciler) updateBranchProtection(ctx context.Context,
 		reviewCount := int(updated.RequiredApprovingReviewCount)
 		bp.Status = githubv1alpha1.BranchProtectionStatus{
 			LastUpdateTimestamp:            &now,
-			Id:                             &updated.Id,
-			RepositoryId:                   &updated.Repository.Id,
+			NodeId:                         &updated.Id,
+			RepositoryNodeId:               &updated.Repository.Id,
 			RepositoryOwner:                &ownerLogin,
 			RepositoryName:                 &updated.Repository.Name,
 			Pattern:                        &updated.Pattern,
@@ -574,19 +574,19 @@ func (r *BranchProtectionReconciler) updateBranchProtection(ctx context.Context,
 }
 
 func (r *BranchProtectionReconciler) deleteBranchProtection(ctx context.Context, bp *githubv1alpha1.BranchProtection) error {
-	if bp.Status.Id == nil {
+	if bp.Status.NodeId == nil {
 		return fmt.Errorf("branch protection NodeID is nil")
 	}
 
 	return r.GitHubClient.DeleteBranchProtection(ctx, &githubv4.DeleteBranchProtectionRuleInput{
-		BranchProtectionRuleID: bp.Status.Id,
+		BranchProtectionRuleID: bp.Status.NodeId,
 	})
 }
 
 func (r *BranchProtectionReconciler) branchProtectionToCreateInput(ctx context.Context, bp *githubv1alpha1.BranchProtection) (*githubv4.CreateBranchProtectionRuleInput, error) {
 	var id githubv4.ID
-	if bp.Status.RepositoryId != nil {
-		id = bp.Status.RepositoryId
+	if bp.Status.RepositoryNodeId != nil {
+		id = bp.Status.RepositoryNodeId
 	} else {
 		// return nil, fmt.Errorf("branch protection Status.RepositoryId is nil")
 		repo, err := r.GitHubClient.GetRepositoryBySlug(ctx, bp.Spec.RepositoryOwner, bp.Spec.RepositoryName)

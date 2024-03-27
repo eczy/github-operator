@@ -190,9 +190,9 @@ func (r *OrganizationReconciler) updateOrganization(ctx context.Context, organiz
 		needsUpdate = true
 	}
 	// email
-	if organization.Spec.Email != ghOrganization.GetEmail() {
+	if ptrNonNilAndNotEqualTo(organization.Spec.Email, ghOrganization.GetEmail()) {
 		log.Info("organization email update", "from", ghOrganization.GetEmail(), "to", organization.Spec.Email)
-		updateOrg.Email = github.String(organization.Spec.Email)
+		updateOrg.Email = organization.Spec.Email
 		needsUpdate = true
 	}
 	// twitter username
@@ -226,9 +226,9 @@ func (r *OrganizationReconciler) updateOrganization(ctx context.Context, organiz
 		needsUpdate = true
 	}
 	// default repository permission
-	if ptrNonNilAndNotEqualTo(organization.Spec.DefaultRepositoryPermission, ghOrganization.GetDefaultRepoPermission()) {
+	if ptrNonNilAndNotEqualTo(organization.Spec.DefaultRepositoryPermission, (githubv1alpha1.DefaultRepositoryPermission)(ghOrganization.GetDefaultRepoPermission())) {
 		log.Info("organization defaultRepositoryPermission update", "from", ghOrganization.GetDefaultRepoPermission(), "to", *organization.Spec.DefaultRepositoryPermission)
-		updateOrg.DefaultRepoPermission = organization.Spec.DefaultRepositoryPermission
+		updateOrg.DefaultRepoPermission = (*string)(organization.Spec.DefaultRepositoryPermission)
 		needsUpdate = true
 	}
 	// members can create repositories
@@ -346,7 +346,7 @@ func (r *OrganizationReconciler) updateOrganization(ctx context.Context, organiz
 			Description:                          updated.Description,
 			HasOrganizationProjects:              updated.HasOrganizationProjects,
 			HasRepositoryProjects:                updated.HasRepositoryProjects,
-			DefaultRepositoryPermission:          updated.DefaultRepoPermission,
+			DefaultRepositoryPermission:          (*githubv1alpha1.DefaultRepositoryPermission)(updated.DefaultRepoPermission),
 			MembersCanCreateRepositories:         updated.MembersCanCreateRepos,
 			MembersCanCreateInternalRepositories: updated.MembersCanCreateInternalRepos,
 			MembersCanCreatePrivateRepositories:  updated.MembersCanCreatePrivateRepos,

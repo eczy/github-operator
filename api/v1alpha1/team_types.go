@@ -42,14 +42,6 @@ type TeamSpec struct {
 	// +optional
 	Description *string `json:"description,omitempty"`
 
-	// List of GitHub IDs for standard members.
-	// +optional
-	Members []string `json:"members,omitempty"`
-
-	// List of GitHub IDs for maintainers.
-	// +optional
-	Maintainers []string `json:"maintainers,omitempty"`
-
 	// Level of privacy the team should have.
 	// +optional
 	Privacy *Privacy `json:"privacy,omitempty"`
@@ -62,6 +54,8 @@ type TeamSpec struct {
 	// +optional
 	ParentTeamId *int64 `json:"parent_team_id,omitempty"`
 
+	// Repository permissions to assign to this team
+	// +optional
 	Repositories map[string]RepositoryPermission `json:"repositories,omitempty"`
 }
 
@@ -70,16 +64,13 @@ type TeamStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Id                  *int64       `json:"id,omitempty"`
-	Slug                *string      `json:"slug,omitempty"`
-	LastUpdateTimestamp *metav1.Time `json:"last_update_timestamp,omitempty"`
-
+	Id                  *int64                          `json:"id,omitempty"`
+	Slug                *string                         `json:"slug,omitempty"`
+	LastUpdateTimestamp *metav1.Time                    `json:"last_update_timestamp,omitempty"`
 	OrganizationLogin   *string                         `json:"organization_login,omitempty"`
 	OrganizationId      *int64                          `json:"organization_slug,omitempty"`
 	Name                *string                         `json:"name,omitempty"`
 	Description         *string                         `json:"description,omitempty"`
-	Members             []string                        `json:"members,omitempty"`
-	Maintainers         []string                        `json:"maintainers,omitempty"`
 	Privacy             *Privacy                        `json:"privacy,omitempty"`
 	NotificationSetting *NotificationSetting            `json:"notification_setting,omitempty"`
 	ParentTeamId        *int64                          `json:"parent_team_id,omitempty"`
@@ -135,6 +126,7 @@ const (
 	Disabled NotificationSetting = "notifications_disabled"
 )
 
+// +kubebuilder:validation:Enum=admin;push;maintain;triage;pull
 type RepositoryPermission string
 
 const (

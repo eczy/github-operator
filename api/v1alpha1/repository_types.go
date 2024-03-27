@@ -29,10 +29,12 @@ type RepositorySpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	//+kubebuilder:validation:MinLength=1
+
 	// The name of the repository.
 	Name string `json:"name"`
 
 	//+kubebuilder:validation:MinLength=1
+
 	// The organization name. The name is not case sensitive.
 	Owner string `json:"owner"`
 

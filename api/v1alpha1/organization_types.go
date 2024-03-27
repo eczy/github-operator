@@ -28,85 +28,116 @@ type OrganizationSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	//+kubebuilder:validation:MinLength=1
+
 	// The organization name. The name is not case sensitive.
 	Login string `json:"login"`
+
+	//+kubebuilder:validation:MinLength=1
 
 	// The shorthand name of the company.
 	Name string `json:"name"`
 
+	//+kubebuilder:validation:MinLength=1
+
 	// Billing email address. This address is not publicized.
 	BillingEmail string `json:"billing_email,omitempty"`
+
+	//+kubebuilder:validation:MinLength=1
 
 	// The company name.
 	Company string `json:"comapny,omitempty"`
 
 	// The publicly visible email address.
-	Email string `json:"email"`
+	// +optional
+	Email *string `json:"email,omitempty"`
 
 	// The Twitter username of the company.
+	// +optional
 	TwitterUsername *string `json:"twitter_username,omitempty"`
 
 	// The location.
+	// +optional
 	Location *string `json:"location,omitempty"`
 
 	// The description of the company.
+	// +optional
 	Description *string `json:"description,omitempty"`
 
 	// Whether an organization can use organization projects.
+	// +optional
 	HasOrganizationProjects *bool `json:"has_organization_projects,omitempty"`
 
 	// Whether repositories that belong to the organization can use repository projects.
+	// +optional
 	HasRepositoryProjects *bool `json:"has_repository_projects,omitempty"`
 
 	// Default permission level members have for organization repositories.
 	// Can be one of: read, write, admin, none
-	DefaultRepositoryPermission *string `json:"default_repository_permission,omitempty"` // TODO: enum
+	// +optional
+	DefaultRepositoryPermission *DefaultRepositoryPermission `json:"default_repository_permission,omitempty"`
 
 	// Whether of non-admin organization members can create repositories.
+	// +optional
 	MembersCanCreateRepositories *bool `json:"members_can_create_repositories,omitempty"`
 
 	// Whether organization members can create internal repositories, which are visible to all enterprise members. You can only allow members to create internal repositories if your organization is associated with an enterprise account using GitHub Enterprise Cloud or GitHub Enterprise Server 2.20+.
+	// +optional
 	MembersCanCreateInternalRepositories *bool `json:"members_can_create_internal_repositories,omitempty"`
 
 	// Whether organization members can create private repositories, which are visible to organization members with permission.
+	// +optional
 	MembersCanCreatePrivateRepositories *bool `json:"members_can_create_private_repositories,omitempty"`
 
 	// Whether organization members can create public repositories, which are visible to anyone.
+	// +optional
 	MembersCanCreatePublicRepositories *bool `json:"members_can_create_public_repositories,omitempty"`
 
 	// Whether organization members can create GitHub Pages sites.
+	// +optional
 	MembersCanCreatePages *bool `json:"members_can_create_pages,omitempty"`
 
 	// Whether organization members can create public GitHub Pages sites.
+	// +optional
 	MembersCanCreatePublicPages *bool `json:"members_can_create_public_pages,omitempty"`
 
 	// Whether organization members can create private GitHub Pages sites.
+	// +optional
 	MembersCanCreatePrivatePages *bool `json:"members_can_create_private_pages,omitempty"`
 
 	// Whether organization members can create private GitHub Pages sites.
+	// +optional
 	MembersCanForkPrivateRepositories *bool `json:"members_can_fork_private_repositories,omitempty"`
 
 	// Whether contributors to organization repositories are required to sign off on commits they make through GitHub's web interface.
+	// +optional
 	WebCommitSignoffRequired *bool `json:"web_commit_signoff_required,omitempty"`
 
+	// +optional
 	Blog *string `json:"blog,omitempty"`
 
 	// Whether GitHub Advanced Security is automatically enabled for new repositories.
+	// +optional
 	AdvancedSecurityEnabledForNewRepositories *bool `json:"advanced_security_enabled_for_new_repositories,omitempty"`
 
 	// Whether Dependabot alerts is automatically enabled for new repositories.
+	// +optional
 	DependabotAlertsEnabledForNewRepositories *bool `json:"dependabot_alerts_enabled_for_new_repositories,omitempty"`
 
 	// Whether Dependabot security updates is automatically enabled for new repositories.
+	// +optional
 	DependabotSecurityUpdatesEnabledForNewRepositories *bool `json:"dependabot_security_updates_enabled_for_new_repositories,omitempty"`
 
 	// Whether dependency graph is automatically enabled for new repositories.
+	// +optional
 	DependencyGraphEnabledForNewRepositories *bool `json:"dependency_graph_enabled_for_new_repositories,omitempty"`
 
 	// Whether secret scanning is automatically enabled for new repositories.
+	// +optional
 	SecretScanningEnabledForNewRepositories *bool `json:"secret_scanning_enabled_for_new_repositories,omitempty"`
 
 	// Whether secret scanning push protection is automatically enabled for new repositories.
+	// +optional
 	SecretScanningPushProtectionEnabledForNewRepositories *bool `json:"secret_scanning_push_protection_enabled_for_new_repositories,omitempty"`
 }
 
@@ -118,32 +149,32 @@ type OrganizationStatus struct {
 	Id                  *int64       `json:"id,omitempty"`
 	LastUpdateTimestamp *metav1.Time `json:"last_update_timestamp,omitempty"`
 
-	Name                                                  string  `json:"name"`
-	BillingEmail                                          string  `json:"billing_email,omitempty"`
-	Company                                               string  `json:"comapny,omitempty"`
-	Email                                                 string  `json:"email"`
-	TwitterUsername                                       *string `json:"twitter_username,omitempty"`
-	Location                                              *string `json:"location,omitempty"`
-	Description                                           *string `json:"description,omitempty"`
-	HasOrganizationProjects                               *bool   `json:"has_organization_projects,omitempty"`
-	HasRepositoryProjects                                 *bool   `json:"has_repository_projects,omitempty"`
-	DefaultRepositoryPermission                           *string `json:"default_repository_permission,omitempty"` // TODO: enum
-	MembersCanCreateRepositories                          *bool   `json:"members_can_create_repositories,omitempty"`
-	MembersCanCreateInternalRepositories                  *bool   `json:"members_can_create_internal_repositories,omitempty"`
-	MembersCanCreatePrivateRepositories                   *bool   `json:"members_can_create_private_repositories,omitempty"`
-	MembersCanCreatePublicRepositories                    *bool   `json:"members_can_create_public_repositories,omitempty"`
-	MembersCanCreatePages                                 *bool   `json:"members_can_create_pages,omitempty"`
-	MembersCanCreatePublicPages                           *bool   `json:"members_can_create_public_pages,omitempty"`
-	MembersCanCreatePrivatePages                          *bool   `json:"members_can_create_private_pages,omitempty"`
-	MembersCanForkPrivateRepositories                     *bool   `json:"members_can_fork_private_repositories,omitempty"`
-	WebCommitSignoffRequired                              *bool   `json:"web_commit_signoff_required,omitempty"`
-	Blog                                                  *string `json:"blog,omitempty"`
-	AdvancedSecurityEnabledForNewRepositories             *bool   `json:"advanced_security_enabled_for_new_repositories,omitempty"`
-	DependabotAlertsEnabledForNewRepositories             *bool   `json:"dependabot_alerts_enabled_for_new_repositories,omitempty"`
-	DependabotSecurityUpdatesEnabledForNewRepositories    *bool   `json:"dependabot_security_updates_enabled_for_new_repositories,omitempty"`
-	DependencyGraphEnabledForNewRepositories              *bool   `json:"dependency_graph_enabled_for_new_repositories,omitempty"`
-	SecretScanningEnabledForNewRepositories               *bool   `json:"secret_scanning_enabled_for_new_repositories,omitempty"`
-	SecretScanningPushProtectionEnabledForNewRepositories *bool   `json:"secret_scanning_push_protection_enabled_for_new_repositories,omitempty"`
+	Name                                                  string                       `json:"name"`
+	BillingEmail                                          string                       `json:"billing_email,omitempty"`
+	Company                                               string                       `json:"comapny,omitempty"`
+	Email                                                 string                       `json:"email"`
+	TwitterUsername                                       *string                      `json:"twitter_username,omitempty"`
+	Location                                              *string                      `json:"location,omitempty"`
+	Description                                           *string                      `json:"description,omitempty"`
+	HasOrganizationProjects                               *bool                        `json:"has_organization_projects,omitempty"`
+	HasRepositoryProjects                                 *bool                        `json:"has_repository_projects,omitempty"`
+	DefaultRepositoryPermission                           *DefaultRepositoryPermission `json:"default_repository_permission,omitempty"`
+	MembersCanCreateRepositories                          *bool                        `json:"members_can_create_repositories,omitempty"`
+	MembersCanCreateInternalRepositories                  *bool                        `json:"members_can_create_internal_repositories,omitempty"`
+	MembersCanCreatePrivateRepositories                   *bool                        `json:"members_can_create_private_repositories,omitempty"`
+	MembersCanCreatePublicRepositories                    *bool                        `json:"members_can_create_public_repositories,omitempty"`
+	MembersCanCreatePages                                 *bool                        `json:"members_can_create_pages,omitempty"`
+	MembersCanCreatePublicPages                           *bool                        `json:"members_can_create_public_pages,omitempty"`
+	MembersCanCreatePrivatePages                          *bool                        `json:"members_can_create_private_pages,omitempty"`
+	MembersCanForkPrivateRepositories                     *bool                        `json:"members_can_fork_private_repositories,omitempty"`
+	WebCommitSignoffRequired                              *bool                        `json:"web_commit_signoff_required,omitempty"`
+	Blog                                                  *string                      `json:"blog,omitempty"`
+	AdvancedSecurityEnabledForNewRepositories             *bool                        `json:"advanced_security_enabled_for_new_repositories,omitempty"`
+	DependabotAlertsEnabledForNewRepositories             *bool                        `json:"dependabot_alerts_enabled_for_new_repositories,omitempty"`
+	DependabotSecurityUpdatesEnabledForNewRepositories    *bool                        `json:"dependabot_security_updates_enabled_for_new_repositories,omitempty"`
+	DependencyGraphEnabledForNewRepositories              *bool                        `json:"dependency_graph_enabled_for_new_repositories,omitempty"`
+	SecretScanningEnabledForNewRepositories               *bool                        `json:"secret_scanning_enabled_for_new_repositories,omitempty"`
+	SecretScanningPushProtectionEnabledForNewRepositories *bool                        `json:"secret_scanning_push_protection_enabled_for_new_repositories,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -170,3 +201,13 @@ type OrganizationList struct {
 func init() {
 	SchemeBuilder.Register(&Organization{}, &OrganizationList{})
 }
+
+// +kubebuilder:validation:Enum=read;write;none;admin
+type DefaultRepositoryPermission string
+
+const (
+	DefaultRepositoryPermissionRead  DefaultRepositoryPermission = "read"
+	DefaultRepositoryPermissionWrite DefaultRepositoryPermission = "write"
+	DefaultRepositoryPermissionNone  DefaultRepositoryPermission = "none"
+	DefaultRepositoryPermissionAdmin DefaultRepositoryPermission = "admin"
+)

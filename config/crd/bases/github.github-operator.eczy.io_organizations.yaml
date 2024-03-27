@@ -45,16 +45,23 @@ spec:
                 type: boolean
               billing_email:
                 description: Billing email address. This address is not publicized.
+                minLength: 1
                 type: string
               blog:
                 type: string
               comapny:
                 description: The company name.
+                minLength: 1
                 type: string
               default_repository_permission:
                 description: |-
                   Default permission level members have for organization repositories.
                   Can be one of: read, write, admin, none
+                enum:
+                - read
+                - write
+                - none
+                - admin
                 type: string
               dependabot_alerts_enabled_for_new_repositories:
                 description: Whether Dependabot alerts is automatically enabled for
@@ -86,6 +93,7 @@ spec:
                 type: string
               login:
                 description: The organization name. The name is not case sensitive.
+                minLength: 1
                 type: string
               members_can_create_internal_repositories:
                 description: Whether organization members can create internal repositories,
@@ -124,6 +132,7 @@ spec:
                 type: boolean
               name:
                 description: The shorthand name of the company.
+                minLength: 1
                 type: string
               secret_scanning_enabled_for_new_repositories:
                 description: Whether secret scanning is automatically enabled for
@@ -141,7 +150,6 @@ spec:
                   required to sign off on commits they make through GitHub's web interface.
                 type: boolean
             required:
-            - email
             - login
             - name
             type: object
@@ -157,6 +165,11 @@ spec:
               comapny:
                 type: string
               default_repository_permission:
+                enum:
+                - read
+                - write
+                - none
+                - admin
                 type: string
               dependabot_alerts_enabled_for_new_repositories:
                 type: boolean

@@ -42,16 +42,6 @@ spec:
               description:
                 description: Description of the team.
                 type: string
-              maintainers:
-                description: List of GitHub IDs for maintainers.
-                items:
-                  type: string
-                type: array
-              members:
-                description: List of GitHub IDs for standard members.
-                items:
-                  type: string
-                type: array
               name:
                 description: Name of the team.
                 minLength: 1
@@ -78,7 +68,14 @@ spec:
                 type: string
               repositories:
                 additionalProperties:
+                  enum:
+                  - admin
+                  - push
+                  - maintain
+                  - triage
+                  - pull
                   type: string
+                description: Repository permissions to assign to this team
                 type: object
             required:
             - name
@@ -95,14 +92,6 @@ spec:
               last_update_timestamp:
                 format: date-time
                 type: string
-              maintainers:
-                items:
-                  type: string
-                type: array
-              members:
-                items:
-                  type: string
-                type: array
               name:
                 type: string
               notification_setting:
@@ -128,6 +117,12 @@ spec:
                 type: string
               repositories:
                 additionalProperties:
+                  enum:
+                  - admin
+                  - push
+                  - maintain
+                  - triage
+                  - pull
                   type: string
                 type: object
               slug:
