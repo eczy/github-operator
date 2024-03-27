@@ -285,27 +285,27 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		needsUpdate = true
 	}
 	// SquashMergeCommitTitle
-	if ptrNonNilAndNotEqualTo(repo.Spec.SquashMergeCommitTitle, ghRepo.GetSquashMergeCommitTitle()) {
+	if ptrNonNilAndNotEqualTo(repo.Spec.SquashMergeCommitTitle, (githubv1alpha1.SquashMergeCommitTitle)(ghRepo.GetSquashMergeCommitTitle())) {
 		log.Info("repository SquashMergeCommitTitle update", "from", ghRepo.GetSquashMergeCommitTitle(), "to", repo.Spec.SquashMergeCommitTitle)
-		updateRepo.SquashMergeCommitTitle = repo.Spec.SquashMergeCommitTitle
+		updateRepo.SquashMergeCommitTitle = (*string)(repo.Spec.SquashMergeCommitTitle)
 		needsUpdate = true
 	}
 	// SquashMergeCommitMessage
-	if ptrNonNilAndNotEqualTo(repo.Spec.SquashMergeCommitMessage, ghRepo.GetSquashMergeCommitMessage()) {
+	if ptrNonNilAndNotEqualTo(repo.Spec.SquashMergeCommitMessage, (githubv1alpha1.SquashMergeCommitMessage)(ghRepo.GetSquashMergeCommitMessage())) {
 		log.Info("repository SquashMergeCommitMessage update", "from", ghRepo.GetSquashMergeCommitMessage(), "to", repo.Spec.SquashMergeCommitMessage)
-		updateRepo.SquashMergeCommitMessage = repo.Spec.SquashMergeCommitMessage
+		updateRepo.SquashMergeCommitMessage = (*string)(repo.Spec.SquashMergeCommitMessage)
 		needsUpdate = true
 	}
 	// MergeCommitTitle
-	if ptrNonNilAndNotEqualTo(repo.Spec.MergeCommitTitle, ghRepo.GetMergeCommitTitle()) {
+	if ptrNonNilAndNotEqualTo(repo.Spec.MergeCommitTitle, (githubv1alpha1.MergeCommitTitle)(ghRepo.GetMergeCommitTitle())) {
 		log.Info("repository MergeCommitTitle update", "from", ghRepo.GetMergeCommitTitle(), "to", repo.Spec.MergeCommitTitle)
-		updateRepo.MergeCommitTitle = repo.Spec.MergeCommitTitle
+		updateRepo.MergeCommitTitle = (*string)(repo.Spec.MergeCommitTitle)
 		needsUpdate = true
 	}
 	// MergeCommitMessage
-	if ptrNonNilAndNotEqualTo(repo.Spec.MergeCommitMessage, ghRepo.GetMergeCommitMessage()) {
+	if ptrNonNilAndNotEqualTo(repo.Spec.MergeCommitMessage, (githubv1alpha1.MergeCommitMessage)(ghRepo.GetMergeCommitMessage())) {
 		log.Info("repository MergeCommitMessage update", "from", ghRepo.GetMergeCommitMessage(), "to", repo.Spec.MergeCommitMessage)
-		updateRepo.MergeCommitMessage = repo.Spec.MergeCommitMessage
+		updateRepo.MergeCommitMessage = (*string)(repo.Spec.MergeCommitMessage)
 		needsUpdate = true
 	}
 	// Topics
@@ -320,12 +320,6 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		updateRepo.Archived = repo.Spec.Archived
 		needsUpdate = true
 	}
-	// Disabled
-	if ptrNonNilAndNotEqualTo(repo.Spec.Disabled, ghRepo.GetDisabled()) {
-		log.Info("repository Disabled update", "from", ghRepo.GetDisabled(), "to", repo.Spec.Disabled)
-		updateRepo.Disabled = repo.Spec.Disabled
-		needsUpdate = true
-	}
 	// HasIssues
 	if ptrNonNilAndNotEqualTo(repo.Spec.HasIssues, ghRepo.GetHasIssues()) {
 		log.Info("repository HasIssues update", "from", ghRepo.GetHasIssues(), "to", repo.Spec.HasIssues)
@@ -336,12 +330,6 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 	if ptrNonNilAndNotEqualTo(repo.Spec.HasWiki, ghRepo.GetHasWiki()) {
 		log.Info("repository HasWiki update", "from", ghRepo.GetHasWiki(), "to", repo.Spec.HasWiki)
 		updateRepo.HasWiki = repo.Spec.HasWiki
-		needsUpdate = true
-	}
-	// HasPages
-	if ptrNonNilAndNotEqualTo(repo.Spec.HasPages, ghRepo.GetHasPages()) {
-		log.Info("repository HasPages update", "from", ghRepo.GetHasPages(), "to", repo.Spec.HasPages)
-		updateRepo.HasPages = repo.Spec.HasPages
 		needsUpdate = true
 	}
 	// HasProjects
@@ -406,11 +394,11 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		}
 
 		templateRepository := ghRepo.GetTemplateRepository()
-		var templateRepositoryOwnerName string
+		var templateRepositoryOwnerLogin string
 		var templateRepositoryName string
 		var templateRepositoryId int64
 		if templateRepository != nil {
-			templateRepositoryOwnerName = templateRepository.Owner.GetName()
+			templateRepositoryOwnerLogin = templateRepository.Owner.GetName()
 			templateRepositoryName = templateRepository.GetName()
 			templateRepositoryId = templateRepository.GetID()
 		}
@@ -424,53 +412,46 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		}
 
 		repo.Status = githubv1alpha1.RepositoryStatus{
-			LastUpdateTimestamp:         &now,
-			Id:                          ghRepo.ID,
-			NodeID:                      ghRepo.NodeID,
-			OwnerLogin:                  github.String(ownerLogin),
-			OwnerNodeId:                 github.Int64(ownerId),
-			Name:                        ghRepo.Name,
-			FullName:                    ghRepo.FullName,
-			Description:                 ghRepo.Description,
-			Homepage:                    ghRepo.Homepage,
-			DefaultBranch:               ghRepo.DefaultBranch,
-			CreatedAt:                   (*v1.Time)(ghRepo.CreatedAt),
-			PushedAt:                    (*v1.Time)(ghRepo.PushedAt),
-			UpdatedAt:                   (*v1.Time)(ghRepo.UpdatedAt),
-			Language:                    ghRepo.Language,
-			Fork:                        ghRepo.Fork,
-			Size:                        ghRepo.Size,
-			ParentName:                  github.String(parentName),
-			ParentId:                    github.Int64(parentId),
-			TemplateRepositoryOwnerName: github.String(templateRepositoryOwnerName),
-			TemplateRepositoryName:      github.String(templateRepositoryName),
-			TemplateRepositoryId:        github.Int64(templateRepositoryId),
-			OrganizationLogin:           github.String(organizationLogin),
-			OrganizationId:              github.Int64(organizationId),
-			AllowRebaseMerge:            ghRepo.AllowRebaseMerge,
-			AllowUpdateBranch:           ghRepo.AllowUpdateBranch,
-			AllowSquashMerge:            ghRepo.AllowSquashMerge,
-			AllowMergeCommit:            ghRepo.AllowMergeCommit,
-			AllowAutoMerge:              ghRepo.AllowAutoMerge,
-			AllowForking:                ghRepo.AllowForking,
-			WebCommitSignoffRequired:    ghRepo.WebCommitSignoffRequired,
-			DeleteBranchOnMerge:         ghRepo.DeleteBranchOnMerge,
-			SquashMergeCommitTitle:      ghRepo.SquashMergeCommitTitle,
-			SquashMergeCommitMessage:    ghRepo.SquashMergeCommitMessage,
-			MergeCommitTitle:            ghRepo.MergeCommitTitle,
-			MergeCommitMessage:          ghRepo.MergeCommitMessage,
-			Topics:                      ghRepo.Topics,
-			Archived:                    ghRepo.Archived,
-			Disabled:                    ghRepo.Disabled,
-			HasIssues:                   ghRepo.HasIssues,
-			HasWiki:                     ghRepo.HasWiki,
-			HasPages:                    ghRepo.HasPages,
-			HasProjects:                 ghRepo.HasProjects,
-			HasDownloads:                ghRepo.HasDownloads,
-			HasDiscussions:              ghRepo.HasDiscussions,
-			IsTemplate:                  ghRepo.IsTemplate,
-			LicenseTemplate:             ghRepo.LicenseTemplate,
-			Visibility:                  ghRepo.Visibility,
+			LastUpdateTimestamp:          &now,
+			Id:                           ghRepo.ID,
+			NodeID:                       ghRepo.NodeID,
+			OwnerLogin:                   github.String(ownerLogin),
+			OwnerNodeId:                  github.Int64(ownerId),
+			Name:                         ghRepo.Name,
+			FullName:                     ghRepo.FullName,
+			Description:                  ghRepo.Description,
+			Homepage:                     ghRepo.Homepage,
+			DefaultBranch:                ghRepo.DefaultBranch,
+			CreatedAt:                    (*v1.Time)(ghRepo.CreatedAt),
+			PushedAt:                     (*v1.Time)(ghRepo.PushedAt),
+			UpdatedAt:                    (*v1.Time)(ghRepo.UpdatedAt),
+			ParentName:                   github.String(parentName),
+			ParentId:                     github.Int64(parentId),
+			TemplateRepositoryOwnerLogin: github.String(templateRepositoryOwnerLogin),
+			TemplateRepositoryName:       github.String(templateRepositoryName),
+			TemplateRepositoryId:         github.Int64(templateRepositoryId),
+			OrganizationLogin:            github.String(organizationLogin),
+			OrganizationId:               github.Int64(organizationId),
+			AllowRebaseMerge:             ghRepo.AllowRebaseMerge,
+			AllowUpdateBranch:            ghRepo.AllowUpdateBranch,
+			AllowSquashMerge:             ghRepo.AllowSquashMerge,
+			AllowMergeCommit:             ghRepo.AllowMergeCommit,
+			AllowAutoMerge:               ghRepo.AllowAutoMerge,
+			AllowForking:                 ghRepo.AllowForking,
+			WebCommitSignoffRequired:     ghRepo.WebCommitSignoffRequired,
+			DeleteBranchOnMerge:          ghRepo.DeleteBranchOnMerge,
+			SquashMergeCommitTitle:       (*githubv1alpha1.SquashMergeCommitTitle)(ghRepo.SquashMergeCommitTitle),
+			SquashMergeCommitMessage:     (*githubv1alpha1.SquashMergeCommitMessage)(ghRepo.SquashMergeCommitMessage),
+			MergeCommitTitle:             (*githubv1alpha1.MergeCommitTitle)(ghRepo.MergeCommitTitle),
+			MergeCommitMessage:           (*githubv1alpha1.MergeCommitMessage)(ghRepo.MergeCommitMessage),
+			Topics:                       ghRepo.Topics,
+			Archived:                     ghRepo.Archived,
+			HasIssues:                    ghRepo.HasIssues,
+			HasWiki:                      ghRepo.HasWiki,
+			HasProjects:                  ghRepo.HasProjects,
+			HasDownloads:                 ghRepo.HasDownloads,
+			HasDiscussions:               ghRepo.HasDiscussions,
+			Visibility:                   ghRepo.Visibility,
 		}
 
 		// update status
@@ -504,16 +485,14 @@ func repositoryToGitHubRepository(repository *githubv1alpha1.Repository) *github
 		AllowForking:             repository.Spec.AllowForking,
 		WebCommitSignoffRequired: repository.Spec.WebCommitSignoffRequired,
 		DeleteBranchOnMerge:      repository.Spec.DeleteBranchOnMerge,
-		SquashMergeCommitTitle:   repository.Spec.SquashMergeCommitTitle,
-		SquashMergeCommitMessage: repository.Spec.SquashMergeCommitMessage,
-		MergeCommitTitle:         repository.Spec.MergeCommitTitle,
-		MergeCommitMessage:       repository.Spec.MergeCommitMessage,
+		SquashMergeCommitTitle:   (*string)(repository.Spec.SquashMergeCommitTitle),
+		SquashMergeCommitMessage: (*string)(repository.Spec.SquashMergeCommitMessage),
+		MergeCommitTitle:         (*string)(repository.Spec.MergeCommitTitle),
+		MergeCommitMessage:       (*string)(repository.Spec.MergeCommitMessage),
 		Topics:                   repository.Spec.Topics,
 		Archived:                 repository.Spec.Archived,
-		Disabled:                 repository.Spec.Disabled,
 		HasIssues:                repository.Spec.HasIssues,
 		HasWiki:                  repository.Spec.HasWiki,
-		HasPages:                 repository.Spec.HasPages,
 		HasProjects:              repository.Spec.HasProjects,
 		HasDownloads:             repository.Spec.HasDownloads,
 		HasDiscussions:           repository.Spec.HasDiscussions,

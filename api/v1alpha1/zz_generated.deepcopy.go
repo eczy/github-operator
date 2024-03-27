@@ -938,22 +938,22 @@ func (in *RepositorySpec) DeepCopyInto(out *RepositorySpec) {
 	}
 	if in.SquashMergeCommitTitle != nil {
 		in, out := &in.SquashMergeCommitTitle, &out.SquashMergeCommitTitle
-		*out = new(string)
+		*out = new(SquashMergeCommitTitle)
 		**out = **in
 	}
 	if in.SquashMergeCommitMessage != nil {
 		in, out := &in.SquashMergeCommitMessage, &out.SquashMergeCommitMessage
-		*out = new(string)
+		*out = new(SquashMergeCommitMessage)
 		**out = **in
 	}
 	if in.MergeCommitTitle != nil {
 		in, out := &in.MergeCommitTitle, &out.MergeCommitTitle
-		*out = new(string)
+		*out = new(MergeCommitTitle)
 		**out = **in
 	}
 	if in.MergeCommitMessage != nil {
 		in, out := &in.MergeCommitMessage, &out.MergeCommitMessage
-		*out = new(string)
+		*out = new(MergeCommitMessage)
 		**out = **in
 	}
 	if in.Topics != nil {
@@ -966,11 +966,6 @@ func (in *RepositorySpec) DeepCopyInto(out *RepositorySpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.Disabled != nil {
-		in, out := &in.Disabled, &out.Disabled
-		*out = new(bool)
-		**out = **in
-	}
 	if in.HasIssues != nil {
 		in, out := &in.HasIssues, &out.HasIssues
 		*out = new(bool)
@@ -978,11 +973,6 @@ func (in *RepositorySpec) DeepCopyInto(out *RepositorySpec) {
 	}
 	if in.HasWiki != nil {
 		in, out := &in.HasWiki, &out.HasWiki
-		*out = new(bool)
-		**out = **in
-	}
-	if in.HasPages != nil {
-		in, out := &in.HasPages, &out.HasPages
 		*out = new(bool)
 		**out = **in
 	}
@@ -1001,14 +991,14 @@ func (in *RepositorySpec) DeepCopyInto(out *RepositorySpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.IsTemplate != nil {
-		in, out := &in.IsTemplate, &out.IsTemplate
-		*out = new(bool)
-		**out = **in
-	}
 	if in.Visibility != nil {
 		in, out := &in.Visibility, &out.Visibility
 		*out = new(string)
+		**out = **in
+	}
+	if in.SecurityAndAnalysis != nil {
+		in, out := &in.SecurityAndAnalysis, &out.SecurityAndAnalysis
+		*out = new(SecurityAndAnalysis)
 		**out = **in
 	}
 }
@@ -1060,6 +1050,11 @@ func (in *RepositoryStatus) DeepCopyInto(out *RepositoryStatus) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.Owner != nil {
+		in, out := &in.Owner, &out.Owner
+		*out = new(string)
+		**out = **in
+	}
 	if in.Description != nil {
 		in, out := &in.Description, &out.Description
 		*out = new(string)
@@ -1075,66 +1070,14 @@ func (in *RepositoryStatus) DeepCopyInto(out *RepositoryStatus) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.CreatedAt != nil {
-		in, out := &in.CreatedAt, &out.CreatedAt
-		*out = (*in).DeepCopy()
-	}
-	if in.PushedAt != nil {
-		in, out := &in.PushedAt, &out.PushedAt
-		*out = (*in).DeepCopy()
-	}
-	if in.UpdatedAt != nil {
-		in, out := &in.UpdatedAt, &out.UpdatedAt
-		*out = (*in).DeepCopy()
-	}
-	if in.Language != nil {
-		in, out := &in.Language, &out.Language
+	if in.TemplateOwner != nil {
+		in, out := &in.TemplateOwner, &out.TemplateOwner
 		*out = new(string)
 		**out = **in
 	}
-	if in.Fork != nil {
-		in, out := &in.Fork, &out.Fork
-		*out = new(bool)
-		**out = **in
-	}
-	if in.Size != nil {
-		in, out := &in.Size, &out.Size
-		*out = new(int)
-		**out = **in
-	}
-	if in.ParentName != nil {
-		in, out := &in.ParentName, &out.ParentName
+	if in.TemplateRepository != nil {
+		in, out := &in.TemplateRepository, &out.TemplateRepository
 		*out = new(string)
-		**out = **in
-	}
-	if in.ParentId != nil {
-		in, out := &in.ParentId, &out.ParentId
-		*out = new(int64)
-		**out = **in
-	}
-	if in.TemplateRepositoryOwnerName != nil {
-		in, out := &in.TemplateRepositoryOwnerName, &out.TemplateRepositoryOwnerName
-		*out = new(string)
-		**out = **in
-	}
-	if in.TemplateRepositoryName != nil {
-		in, out := &in.TemplateRepositoryName, &out.TemplateRepositoryName
-		*out = new(string)
-		**out = **in
-	}
-	if in.TemplateRepositoryId != nil {
-		in, out := &in.TemplateRepositoryId, &out.TemplateRepositoryId
-		*out = new(int64)
-		**out = **in
-	}
-	if in.OrganizationLogin != nil {
-		in, out := &in.OrganizationLogin, &out.OrganizationLogin
-		*out = new(string)
-		**out = **in
-	}
-	if in.OrganizationId != nil {
-		in, out := &in.OrganizationId, &out.OrganizationId
-		*out = new(int64)
 		**out = **in
 	}
 	if in.AllowRebaseMerge != nil {
@@ -1179,22 +1122,22 @@ func (in *RepositoryStatus) DeepCopyInto(out *RepositoryStatus) {
 	}
 	if in.SquashMergeCommitTitle != nil {
 		in, out := &in.SquashMergeCommitTitle, &out.SquashMergeCommitTitle
-		*out = new(string)
+		*out = new(SquashMergeCommitTitle)
 		**out = **in
 	}
 	if in.SquashMergeCommitMessage != nil {
 		in, out := &in.SquashMergeCommitMessage, &out.SquashMergeCommitMessage
-		*out = new(string)
+		*out = new(SquashMergeCommitMessage)
 		**out = **in
 	}
 	if in.MergeCommitTitle != nil {
 		in, out := &in.MergeCommitTitle, &out.MergeCommitTitle
-		*out = new(string)
+		*out = new(MergeCommitTitle)
 		**out = **in
 	}
 	if in.MergeCommitMessage != nil {
 		in, out := &in.MergeCommitMessage, &out.MergeCommitMessage
-		*out = new(string)
+		*out = new(MergeCommitMessage)
 		**out = **in
 	}
 	if in.Topics != nil {
@@ -1207,11 +1150,6 @@ func (in *RepositoryStatus) DeepCopyInto(out *RepositoryStatus) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.Disabled != nil {
-		in, out := &in.Disabled, &out.Disabled
-		*out = new(bool)
-		**out = **in
-	}
 	if in.HasIssues != nil {
 		in, out := &in.HasIssues, &out.HasIssues
 		*out = new(bool)
@@ -1219,11 +1157,6 @@ func (in *RepositoryStatus) DeepCopyInto(out *RepositoryStatus) {
 	}
 	if in.HasWiki != nil {
 		in, out := &in.HasWiki, &out.HasWiki
-		*out = new(bool)
-		**out = **in
-	}
-	if in.HasPages != nil {
-		in, out := &in.HasPages, &out.HasPages
 		*out = new(bool)
 		**out = **in
 	}
@@ -1242,20 +1175,72 @@ func (in *RepositoryStatus) DeepCopyInto(out *RepositoryStatus) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.IsTemplate != nil {
-		in, out := &in.IsTemplate, &out.IsTemplate
-		*out = new(bool)
-		**out = **in
-	}
-	if in.LicenseTemplate != nil {
-		in, out := &in.LicenseTemplate, &out.LicenseTemplate
-		*out = new(string)
-		**out = **in
-	}
 	if in.Visibility != nil {
 		in, out := &in.Visibility, &out.Visibility
 		*out = new(string)
 		**out = **in
+	}
+	if in.SecurityAndAnalysis != nil {
+		in, out := &in.SecurityAndAnalysis, &out.SecurityAndAnalysis
+		*out = new(SecurityAndAnalysis)
+		**out = **in
+	}
+	if in.ParentName != nil {
+		in, out := &in.ParentName, &out.ParentName
+		*out = new(string)
+		**out = **in
+	}
+	if in.ParentId != nil {
+		in, out := &in.ParentId, &out.ParentId
+		*out = new(int64)
+		**out = **in
+	}
+	if in.ParentNodeId != nil {
+		in, out := &in.ParentNodeId, &out.ParentNodeId
+		*out = new(string)
+		**out = **in
+	}
+	if in.TemplateRepositoryOwnerLogin != nil {
+		in, out := &in.TemplateRepositoryOwnerLogin, &out.TemplateRepositoryOwnerLogin
+		*out = new(string)
+		**out = **in
+	}
+	if in.TemplateRepositoryOwnerNodeId != nil {
+		in, out := &in.TemplateRepositoryOwnerNodeId, &out.TemplateRepositoryOwnerNodeId
+		*out = new(string)
+		**out = **in
+	}
+	if in.TemplateRepositoryName != nil {
+		in, out := &in.TemplateRepositoryName, &out.TemplateRepositoryName
+		*out = new(string)
+		**out = **in
+	}
+	if in.TemplateRepositoryId != nil {
+		in, out := &in.TemplateRepositoryId, &out.TemplateRepositoryId
+		*out = new(int64)
+		**out = **in
+	}
+	if in.OrganizationLogin != nil {
+		in, out := &in.OrganizationLogin, &out.OrganizationLogin
+		*out = new(string)
+		**out = **in
+	}
+	if in.OrganizationId != nil {
+		in, out := &in.OrganizationId, &out.OrganizationId
+		*out = new(int64)
+		**out = **in
+	}
+	if in.CreatedAt != nil {
+		in, out := &in.CreatedAt, &out.CreatedAt
+		*out = (*in).DeepCopy()
+	}
+	if in.PushedAt != nil {
+		in, out := &in.PushedAt, &out.PushedAt
+		*out = (*in).DeepCopy()
+	}
+	if in.UpdatedAt != nil {
+		in, out := &in.UpdatedAt, &out.UpdatedAt
+		*out = (*in).DeepCopy()
 	}
 }
 
@@ -1285,6 +1270,39 @@ func (in *RequiredStatusCheck) DeepCopy() *RequiredStatusCheck {
 		return nil
 	}
 	out := new(RequiredStatusCheck)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *SecurityAndAnalysis) DeepCopyInto(out *SecurityAndAnalysis) {
+	*out = *in
+	out.AdvancedSecurity = in.AdvancedSecurity
+	out.SecretScanning = in.SecretScanning
+	out.SecretScanningPushProtection = in.SecretScanningPushProtection
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new SecurityAndAnalysis.
+func (in *SecurityAndAnalysis) DeepCopy() *SecurityAndAnalysis {
+	if in == nil {
+		return nil
+	}
+	out := new(SecurityAndAnalysis)
+	in.DeepCopyInto(out)
+	return out
+}
+
+// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+func (in *SecurityAndAnalysisFeature) DeepCopyInto(out *SecurityAndAnalysisFeature) {
+	*out = *in
+}
+
+// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new SecurityAndAnalysisFeature.
+func (in *SecurityAndAnalysisFeature) DeepCopy() *SecurityAndAnalysisFeature {
+	if in == nil {
+		return nil
+	}
+	out := new(SecurityAndAnalysisFeature)
 	in.DeepCopyInto(out)
 	return out
 }
