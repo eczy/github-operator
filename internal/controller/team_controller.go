@@ -39,6 +39,8 @@ var (
 type TeamRequester interface {
 	GetTeamBySlug(ctx context.Context, org, slug string) (*github.Team, error)
 	GetTeamById(ctx context.Context, org, teamId int64) (*github.Team, error)
+	GetTeamByNodeId(ctx context.Context, nodeId string) (*github.Team, error)
+
 	CreateTeam(ctx context.Context, org string, newTeam github.NewTeam) (*github.Team, error)
 	UpdateTeamBySlug(ctx context.Context, org, slug string, newTeam github.NewTeam) (*github.Team, error)
 	UpdateTeamById(ctx context.Context, org, teamId int64, newTeam github.NewTeam) (*github.Team, error)
@@ -76,12 +78,10 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	log := log.FromContext(ctx)
 
 	if r.GitHubClient == nil {
-		err := fmt.Errorf("nil GitHub client")
-		log.Error(err, "reconciler GitHub client is nil")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("nil GitHub client")
 	}
 
-	// fetch team resource
+	// fetch resource
 	team := &githubv1alpha1.Team{}
 	if err := r.Get(ctx, req.NamespacedName, team); err != nil {
 		log.Error(err, "error fetching Team resource")
@@ -90,29 +90,27 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	var observed *github.Team
 	// try to fetch external resource
-	if team.Status.OrganizationId != nil && team.Status.Id != nil {
-		log.Info("getting team", "id", *team.Status.Id)
-		ghTeam, err := r.GitHubClient.GetTeamById(ctx, *team.Status.OrganizationId, *team.Status.Id)
+	if team.Status.NodeId != nil {
+		ghTeam, err := r.GitHubClient.GetTeamByNodeId(ctx, *team.Status.NodeId)
 		if _, ok := err.(*gh.TeamNotFoundError); ok {
 			log.Info(err.Error())
 		} else if err != nil {
-			log.Error(err, "unable to get team")
+			log.Error(err, "error fetching GitHub team")
 			return ctrl.Result{}, err
 		}
 		observed = ghTeam
 	} else {
-		log.Info("getting team", "name", team.Spec.Name)
 		ghTeam, err := r.GitHubClient.GetTeamBySlug(ctx, team.Spec.Organization, team.Spec.Name)
 		if _, ok := err.(*gh.TeamNotFoundError); ok {
 			log.Info(err.Error())
 		} else if err != nil {
-			log.Error(err, "unable to get team")
+			log.Error(err, "error fetching GitHub team")
 			return ctrl.Result{}, err
 		}
 		observed = ghTeam
 	}
 
-	// if team does't exist, check if scheduled for deletion
+	// if external resource does't exist, check if scheduled for deletion
 	if observed == nil {
 		// if scheduled for deletion
 		if !team.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -142,7 +140,6 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 		} else {
 			// being deleted
-			log.Info("deleting team", "slug", team.Status.Slug)
 			if team.Status.LastUpdateTimestamp != nil {
 				// if we have never resolved this resource before, don't
 				// touch external state
@@ -161,7 +158,7 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	// update team
+	// update external resource
 	err := r.updateTeam(ctx, team, observed)
 	if err != nil {
 		return ctrl.Result{}, err

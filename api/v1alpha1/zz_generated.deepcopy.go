@@ -683,9 +683,9 @@ func (in *OrganizationStatus) DeepCopyInto(out *OrganizationStatus) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.Id != nil {
-		in, out := &in.Id, &out.Id
-		*out = new(int64)
+	if in.NodeId != nil {
+		in, out := &in.NodeId, &out.NodeId
+		*out = new(string)
 		**out = **in
 	}
 	if in.LastUpdateTimestamp != nil {
@@ -1030,8 +1030,8 @@ func (in *RepositoryStatus) DeepCopyInto(out *RepositoryStatus) {
 		*out = new(int64)
 		**out = **in
 	}
-	if in.NodeID != nil {
-		in, out := &in.NodeID, &out.NodeID
+	if in.NodeId != nil {
+		in, out := &in.NodeId, &out.NodeId
 		*out = new(string)
 		**out = **in
 	}
@@ -1419,6 +1419,11 @@ func (in *TeamStatus) DeepCopyInto(out *TeamStatus) {
 	if in.Id != nil {
 		in, out := &in.Id, &out.Id
 		*out = new(int64)
+		**out = **in
+	}
+	if in.NodeId != nil {
+		in, out := &in.NodeId, &out.NodeId
+		*out = new(string)
 		**out = **in
 	}
 	if in.Slug != nil {

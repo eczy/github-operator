@@ -39,15 +39,16 @@ var (
 type RepositoryRequester interface {
 	RepositoryGetter
 
-	UpdateRepositoryBySlug(ctx context.Context, owner, name string, update *github.Repository) (*github.Repository, error)
+	UpdateRepositoryByName(ctx context.Context, owner, name string, update *github.Repository) (*github.Repository, error)
 	CreateRepository(ctx context.Context, org string, create *github.Repository) (*github.Repository, error)
 	CreateRepositoryFromTemplate(ctx context.Context, templateOwner string, templateRepository string, req *github.TemplateRepoRequest) (*github.Repository, error)
-	DeleteRepositoryBySlug(ctx context.Context, owner, name string) error
+	DeleteRepositoryByName(ctx context.Context, owner, name string) error
 	UpdateRepositoryTopics(ctx context.Context, owner string, repo string, topics []string) ([]string, error)
 }
 
 type RepositoryGetter interface {
-	GetRepositoryBySlug(ctx context.Context, owner string, name string) (*github.Repository, error)
+	GetRepositoryByName(ctx context.Context, owner string, name string) (*github.Repository, error)
+	GetRepositoryByNodeId(ctx context.Context, nodeId string) (*github.Repository, error)
 }
 
 // RepositoryReconciler reconciles a Repository object
@@ -75,12 +76,10 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	log := log.FromContext(ctx)
 
 	if r.GitHubClient == nil {
-		err := fmt.Errorf("nil GitHub client")
-		log.Error(err, "reconciler GitHub client is nil")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("nil GitHub client")
 	}
 
-	// fetch repository resource
+	// fetch resource
 	repo := &githubv1alpha1.Repository{}
 	if err := r.Get(ctx, req.NamespacedName, repo); err != nil {
 		log.Error(err, "error fetching Repository resource")
@@ -89,29 +88,28 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	var observed *github.Repository
 	// try to fetch external resource
-	if repo.Status.OwnerLogin != nil && repo.Status.Name != nil {
-		log.Info("getting repository", "slug", *repo.Status.Name)
-		ghTeam, err := r.GitHubClient.GetRepositoryBySlug(ctx, *repo.Status.OwnerLogin, *repo.Status.Name)
+	if repo.Status.NodeId != nil {
+		ghTeam, err := r.GitHubClient.GetRepositoryByNodeId(ctx, *repo.Status.NodeId)
 		if _, ok := err.(*gh.RepositoryNotFoundError); ok {
 			log.Info(err.Error())
 		} else if err != nil {
-			log.Error(err, "unable to get repository")
+			log.Error(err, "error fetching GitHub repository")
+			return ctrl.Result{}, err
 		}
 		observed = ghTeam
 	} else {
-		// TODO: name not necessarily the same as slug - need to convert
-		log.Info("getting repository", "slug", repo.Spec.Name)
 		// TODO: owner not necessarily the same as owner login - need to convert
-		ghRepo, err := r.GitHubClient.GetRepositoryBySlug(ctx, repo.Spec.Owner, repo.Spec.Name)
+		ghRepo, err := r.GitHubClient.GetRepositoryByName(ctx, repo.Spec.Owner, repo.Spec.Name)
 		if _, ok := err.(*gh.TeamNotFoundError); ok {
 			log.Info(err.Error())
 		} else if err != nil {
-			log.Error(err, "unable to get repository")
+			log.Error(err, "error fetching GitHub repository")
+			return ctrl.Result{}, err
 		}
 		observed = ghRepo
 	}
 
-	// if repository does't exist, check if scheduled for deletion
+	// if external resource does't exist, check if scheduled for deletion
 	if observed == nil {
 		// if scheduled for deletion
 		if !repo.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -119,7 +117,6 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, nil
 		} else {
 			// otherwise create the external resource
-			log.Info("creating repository", "name", repo.Spec.Name)
 			ghRepo, err := r.createRepository(ctx, repo)
 			if err != nil {
 				log.Error(err, "error creating repository", "name", repo.Spec.Name)
@@ -141,8 +138,7 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 		} else {
 			// being deleted
-			log.Info("deleting repository", "name", repo.Status.Name)
-			if repo.Status.LastUpdateTimestamp != nil {
+			if repo.Status.NodeId != nil {
 				// if we have never resolved this resource before, don't
 				// touch external state
 				if err := r.deleteRepository(ctx, repo); err != nil {
@@ -160,7 +156,7 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	// update repository
+	// update external resource
 	err := r.updateRepository(ctx, repo, observed)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -361,7 +357,7 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 	// TODO: more granular updates (allow just topic update)
 	if needsUpdate || needsTopicsUpdate || repo.Status.LastUpdateTimestamp == nil {
 		log.Info("updating repository", "name", ghRepo.GetName())
-		updated, err := r.GitHubClient.UpdateRepositoryBySlug(ctx, ghRepo.GetOwner().GetLogin(), ghRepo.GetName(), updateRepo)
+		updated, err := r.GitHubClient.UpdateRepositoryByName(ctx, ghRepo.GetOwner().GetLogin(), ghRepo.GetName(), updateRepo)
 		if err != nil {
 			log.Error(err, "error updating repository", "name", repo.Spec.Name)
 			return err
@@ -414,7 +410,7 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		repo.Status = githubv1alpha1.RepositoryStatus{
 			LastUpdateTimestamp:          &now,
 			Id:                           ghRepo.ID,
-			NodeID:                       ghRepo.NodeID,
+			NodeId:                       ghRepo.NodeID,
 			OwnerLogin:                   github.String(ownerLogin),
 			OwnerNodeId:                  github.Int64(ownerId),
 			Name:                         ghRepo.Name,
@@ -468,7 +464,7 @@ func (r *RepositoryReconciler) deleteRepository(ctx context.Context, repo *githu
 	} else if repo.Status.Name == nil {
 		return fmt.Errorf("repo Name is nil")
 	}
-	return r.GitHubClient.DeleteRepositoryBySlug(ctx, *repo.Status.OwnerLogin, *repo.Status.Name)
+	return r.GitHubClient.DeleteRepositoryByName(ctx, *repo.Status.OwnerLogin, *repo.Status.Name)
 }
 
 func repositoryToGitHubRepository(repository *githubv1alpha1.Repository) *github.Repository {

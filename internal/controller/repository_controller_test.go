@@ -74,7 +74,7 @@ var _ = Describe("Repository Controller", func() {
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 			By("Cleanup the external resource")
-			Expect(ghClient.DeleteRepositoryBySlug(ctx, testOrganization, testRepositoryName))
+			Expect(ghClient.DeleteRepositoryByName(ctx, testOrganization, testRepositoryName))
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
@@ -99,7 +99,7 @@ var _ = Describe("Repository Controller", func() {
 			Expect(resource.Status.Id).NotTo(BeNil())
 
 			By("Checking external resource")
-			ghRepo, err := ghClient.GetRepositoryBySlug(ctx, testOrganization, testRepositoryName)
+			ghRepo, err := ghClient.GetRepositoryByName(ctx, testOrganization, testRepositoryName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ghRepo.Name).NotTo(BeNil())
 			Expect(*ghRepo.Name).To(Equal(testRepositoryName))
@@ -140,7 +140,7 @@ var _ = Describe("Repository Controller", func() {
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 			By("Cleanup the external resource")
-			Expect(ghClient.DeleteRepositoryBySlug(ctx, testOrganization, testRepositoryName))
+			Expect(ghClient.DeleteRepositoryByName(ctx, testOrganization, testRepositoryName))
 		})
 
 		It("should successfully update the resource Name", func() {
@@ -178,7 +178,7 @@ var _ = Describe("Repository Controller", func() {
 			Expect(resource.Status.Id).NotTo(BeNil())
 
 			By("Checking external resource")
-			ghRepo, err := ghClient.GetRepositoryBySlug(ctx, testOrganization, newName)
+			ghRepo, err := ghClient.GetRepositoryByName(ctx, testOrganization, newName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ghRepo.Name).NotTo(BeNil())
 
@@ -200,7 +200,7 @@ var _ = Describe("Repository Controller", func() {
 			Expect(resource.Status.Id).NotTo(BeNil())
 
 			By("Checking external resource")
-			ghRepo, err = ghClient.GetRepositoryBySlug(ctx, testOrganization, testRepositoryName)
+			ghRepo, err = ghClient.GetRepositoryByName(ctx, testOrganization, testRepositoryName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ghRepo.Name).NotTo(BeNil())
 		})
@@ -233,7 +233,7 @@ var _ = Describe("Repository Controller", func() {
 			Expect(resource.Status.Id).NotTo(BeNil())
 
 			By("Checking external resource")
-			ghRepo, err := ghClient.GetRepositoryBySlug(ctx, testOrganization, testRepositoryName)
+			ghRepo, err := ghClient.GetRepositoryByName(ctx, testOrganization, testRepositoryName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ghRepo.Description).NotTo(BeNil())
 			Expect(*ghRepo.Description).To(Equal(newDescription))
@@ -296,7 +296,7 @@ var _ = Describe("Repository Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking the external resource does not exist")
-			_, err = ghClient.GetRepositoryBySlug(ctx, testOrganization, testRepositoryName)
+			_, err = ghClient.GetRepositoryByName(ctx, testOrganization, testRepositoryName)
 			Expect(err).To(HaveOccurred())
 		})
 	})

@@ -83,7 +83,7 @@ var _ = Describe("BranchProtection Controller", func() {
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 			By("Cleanup the test repository")
-			err = ghClient.DeleteRepositoryBySlug(ctx, testOrganization, testRepoName)
+			err = ghClient.DeleteRepositoryByName(ctx, testOrganization, testRepoName)
 			Expect(err).NotTo(HaveOccurred())
 		})
 		It("should successfully reconcile the resource and create a new rule", func() {
@@ -175,7 +175,7 @@ var _ = Describe("BranchProtection Controller", func() {
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 			By("Cleanup the test repository")
-			err = ghClient.DeleteRepositoryBySlug(ctx, testOrganization, testRepoName)
+			err = ghClient.DeleteRepositoryByName(ctx, testOrganization, testRepoName)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -284,7 +284,7 @@ var _ = Describe("BranchProtection Controller", func() {
 
 		AfterEach(func() {
 			By("Cleanup the test repository")
-			err := ghClient.DeleteRepositoryBySlug(ctx, testOrganization, testRepoName)
+			err := ghClient.DeleteRepositoryByName(ctx, testOrganization, testRepoName)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

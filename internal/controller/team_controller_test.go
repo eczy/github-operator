@@ -276,7 +276,7 @@ var _ = Describe("Team Controller", func() {
 
 			defer func() {
 				By("Cleaning up the test repository")
-				Expect(ghClient.DeleteRepositoryBySlug(ctx, testRepo.GetOwner().GetLogin(), testRepo.GetName())).To(Succeed())
+				Expect(ghClient.DeleteRepositoryByName(ctx, testRepo.GetOwner().GetLogin(), testRepo.GetName())).To(Succeed())
 			}()
 
 			By("Assigning team permission to the resource")

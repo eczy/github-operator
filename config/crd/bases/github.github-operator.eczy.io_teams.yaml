@@ -94,6 +94,8 @@ spec:
                 type: string
               name:
                 type: string
+              node_id:
+                type: string
               notification_setting:
                 enum:
                 - notifications_enabled

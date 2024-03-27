@@ -70,14 +70,11 @@ type BranchProtectionReconciler struct {
 func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	// TODO: move this check elsewhere
 	if r.GitHubClient == nil {
-		err := fmt.Errorf("nil GitHub client")
-		log.Error(err, "reconciler GitHub client is nil")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("nil GitHub client")
 	}
 
-	// fetch team resource
+	// fetch resource
 	bp := &githubv1alpha1.BranchProtection{}
 	if err := r.Get(ctx, req.NamespacedName, bp); err != nil {
 		log.Error(err, "error fetching BranchProtection resource")
@@ -87,7 +84,6 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	var observed *gh.BranchProtection
 	// try to fetch external resource
 	if bp.Status.NodeId != nil {
-		log.Info("getting branch protection", "id", bp.Status.NodeId)
 		ghBp, err := r.GitHubClient.GetBranchProtection(ctx, *bp.Status.NodeId)
 		if err != nil {
 			// TODO: determine if the error is a "not found" error vs another type of error
@@ -95,7 +91,6 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 		observed = ghBp
 	} else {
-		log.Info("getting branch protection", "repository", bp.Spec.RepositoryName, "owner", bp.Spec.RepositoryOwner, "pattern", bp.Spec.Pattern)
 		ghBp, err := r.GitHubClient.GetBranchProtectionByOwnerRepoPattern(ctx, bp.Spec.RepositoryOwner, bp.Spec.RepositoryName, bp.Spec.Pattern)
 		if err != nil {
 			// TODO: determine if the error is a "not found" error vs another type of error
@@ -104,7 +99,7 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		observed = ghBp
 	}
 
-	// if branch protection does't exist, check if scheduled for deletion
+	// if external resource does't exist, check if scheduled for deletion
 	if observed == nil {
 		// if scheduled for deletion
 		if !bp.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -112,10 +107,9 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return ctrl.Result{}, nil
 		} else {
 			// otherwise create the external resource
-			log.Info("creating branch protection", "repository", bp.Spec.RepositoryName, "owner", bp.Spec.RepositoryOwner, "pattern", bp.Spec.Pattern)
 			ghBp, err := r.createBranchProtection(ctx, bp)
 			if err != nil {
-				log.Error(err, "unable to create branch protection", "pattern", bp.Spec.Pattern)
+				log.Error(err, "error creating GitHub branch protection", "pattern", bp.Spec.Pattern)
 				return ctrl.Result{}, err
 			}
 			observed = ghBp
@@ -134,12 +128,11 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			}
 		} else {
 			// being deleted
-			log.Info("deleting branch protection", "node_id", bp.Status.NodeId)
 			if bp.Status.LastUpdateTimestamp != nil {
 				// if we have never resolved this resource before, don't
 				// touch external state
 				if err := r.deleteBranchProtection(ctx, bp); err != nil {
-					log.Error(err, "unable to delete branch protection")
+					log.Error(err, "error deleting branch protection")
 					return ctrl.Result{}, err
 				}
 			}
@@ -153,7 +146,7 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 	}
 
-	// update team
+	// update external resource
 	err := r.updateBranchProtection(ctx, bp, observed)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -589,7 +582,7 @@ func (r *BranchProtectionReconciler) branchProtectionToCreateInput(ctx context.C
 		id = bp.Status.RepositoryNodeId
 	} else {
 		// return nil, fmt.Errorf("branch protection Status.RepositoryId is nil")
-		repo, err := r.GitHubClient.GetRepositoryBySlug(ctx, bp.Spec.RepositoryOwner, bp.Spec.RepositoryName)
+		repo, err := r.GitHubClient.GetRepositoryByName(ctx, bp.Spec.RepositoryOwner, bp.Spec.RepositoryName)
 		if err != nil {
 			// TODO: custom error type
 			return nil, fmt.Errorf("no repository '%s' found for owner '%s'", bp.Spec.RepositoryName, bp.Spec.RepositoryOwner)

@@ -104,7 +104,7 @@ var _ = Describe("Organization Controller", func() {
 
 			By("Checking resource status")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
-			Expect(resource.Status.Id).NotTo(BeNil())
+			Expect(resource.Status.NodeId).NotTo(BeNil())
 
 			By("Checking external state")
 			org, err := ghClient.GetOrganization(ctx, testOrganization)

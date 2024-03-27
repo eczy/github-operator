@@ -31,14 +31,10 @@ import (
 	"github.com/google/go-github/v60/github"
 )
 
-// var (
-// 	organizationFinalizerName = "github.github-operator.eczy.io/organization-finalizer"
-// )
-
 type OrganizationRequester interface {
 	GetOrganization(ctx context.Context, org string) (*github.Organization, error)
+	GetOrganizationByNodeId(ctx context.Context, nodeId string) (*github.Organization, error)
 	UpdateOrganization(ctx context.Context, org string, updateOrg *github.Organization) (*github.Organization, error)
-	// DeleteOrganization(ctx context.Context, org string) error
 }
 
 // OrganizationReconciler reconciles a Organization object
@@ -66,12 +62,10 @@ func (r *OrganizationReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	log := log.FromContext(ctx)
 
 	if r.GitHubClient == nil {
-		err := fmt.Errorf("nil GitHub client")
-		log.Error(err, "GitHub client is nil")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("nil GitHub client")
 	}
 
-	// fetch organization resource
+	// fetch resource
 	org := &githubv1alpha1.Organization{}
 	if err := r.Get(ctx, req.NamespacedName, org); err != nil {
 		log.Error(err, "error fetching Organization resource")
@@ -80,29 +74,27 @@ func (r *OrganizationReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	var observed *github.Organization
 	// try to fetch external resource
-	if org.Status.Login != nil {
-		log.Info("getting organization", "login", *org.Status.Login)
-		ghOrg, err := r.GitHubClient.GetOrganization(ctx, *org.Status.Login)
+	if org.Status.NodeId != nil {
+		ghOrg, err := r.GitHubClient.GetOrganizationByNodeId(ctx, *org.Status.NodeId)
 		if _, ok := err.(*gh.OrganizationNotFoundError); ok {
 			log.Info(err.Error())
 		} else if err != nil {
-			log.Error(err, "unable to get organization")
+			log.Error(err, "error fetching GitHub organization")
 			return ctrl.Result{}, err
 		}
 		observed = ghOrg
 	} else {
-		log.Info("getting organization", "login", org.Spec.Login)
 		ghOrg, err := r.GitHubClient.GetOrganization(ctx, org.Spec.Login)
 		if _, ok := err.(*gh.OrganizationNotFoundError); ok {
 			log.Info(err.Error())
 		} else if err != nil {
-			log.Error(err, "unable to get organization")
+			log.Error(err, "error fetching GitHub organization")
 			return ctrl.Result{}, err
 		}
 		observed = ghOrg
 	}
 
-	// if organization does't exist, check if scheduled for deletion
+	// if external resource does't exist, check if scheduled for deletion
 	if observed == nil {
 		// if scheduled for deletion
 		if !org.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -113,39 +105,7 @@ func (r *OrganizationReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, &gh.OrganizationNotFoundError{Login: &org.Spec.Login}
 	}
 
-	// NOTE: Keep in case organization deletion is supported in the future
-	// handle finalizer
-	// if r.DeleteOnResourceDeletion {
-	// 	if org.ObjectMeta.DeletionTimestamp.IsZero() {
-	// 		// not being deleted
-	// 		if !controllerutil.ContainsFinalizer(org, organizationFinalizerName) {
-	// 			controllerutil.AddFinalizer(org, organizationFinalizerName)
-	// 			if err := r.Update(ctx, org); err != nil {
-	// 				return ctrl.Result{}, err
-	// 			}
-	// 		}
-	// 	} else {
-	// 		// being deleted
-	// 		log.Info("deleting organization", "login", org.Status.Login)
-	// 		if org.Status.LastUpdateTimestamp != nil {
-	// 			// if we have never resolved this resource before, don't
-	// 			// touch external state
-	// 			if err := r.deleteOrganization(ctx, org); err != nil {
-	// 				log.Error(err, "unable to delete organization")
-	// 				return ctrl.Result{}, err
-	// 			}
-	// 		}
-
-	// 		controllerutil.RemoveFinalizer(org, teamFinalizerName)
-	// 		if err := r.Update(ctx, org); err != nil {
-	// 			return ctrl.Result{}, err
-	// 		}
-
-	// 		return ctrl.Result{}, nil
-	// 	}
-	// }
-
-	// update team
+	// update external resource
 	err := r.updateOrganization(ctx, org, observed)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -335,7 +295,7 @@ func (r *OrganizationReconciler) updateOrganization(ctx context.Context, organiz
 		now := v1.Now()
 		organization.Status = githubv1alpha1.OrganizationStatus{
 			Login:                                updated.Login,
-			Id:                                   updated.ID,
+			NodeId:                               updated.NodeID,
 			LastUpdateTimestamp:                  &now,
 			Name:                                 updated.GetName(),
 			BillingEmail:                         updated.GetBillingEmail(),

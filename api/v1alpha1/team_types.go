@@ -65,6 +65,7 @@ type TeamStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	Id                  *int64                          `json:"id,omitempty"`
+	NodeId              *string                         `json:"node_id,omitempty"`
 	Slug                *string                         `json:"slug,omitempty"`
 	LastUpdateTimestamp *metav1.Time                    `json:"last_update_timestamp,omitempty"`
 	OrganizationLogin   *string                         `json:"organization_login,omitempty"`

@@ -146,7 +146,7 @@ type OrganizationStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	Login               *string      `json:"login,omitempty"`
-	Id                  *int64       `json:"id,omitempty"`
+	NodeId              *string      `json:"node_id,omitempty"`
 	LastUpdateTimestamp *metav1.Time `json:"last_update_timestamp,omitempty"`
 
 	Name                                                  string                       `json:"name"`

@@ -185,9 +185,6 @@ spec:
                 type: boolean
               has_repository_projects:
                 type: boolean
-              id:
-                format: int64
-                type: integer
               last_update_timestamp:
                 format: date-time
                 type: string
@@ -215,6 +212,8 @@ spec:
               members_can_fork_private_repositories:
                 type: boolean
               name:
+                type: string
+              node_id:
                 type: string
               secret_scanning_enabled_for_new_repositories:
                 type: boolean

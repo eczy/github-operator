@@ -176,10 +176,9 @@ type RepositoryStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	LastUpdateTimestamp *metav1.Time `json:"last_update_timestamp,omitempty"`
-
+	LastUpdateTimestamp      *metav1.Time              `json:"last_update_timestamp,omitempty"`
 	Id                       *int64                    `json:"id,omitempty"`
-	NodeID                   *string                   `json:"node_id,omitempty"`
+	NodeId                   *string                   `json:"node_id,omitempty"`
 	OwnerLogin               *string                   `json:"owner_login,omitempty"`
 	OwnerNodeId              *int64                    `json:"owner_node_id,omitempty"`
 	Name                     *string                   `json:"name,omitempty"`
