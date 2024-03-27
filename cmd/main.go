@@ -122,7 +122,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: setup github client
 	_, err = gh.NewClient()
 
 	if err = (&controller.TeamReconciler{

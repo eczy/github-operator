@@ -32,8 +32,6 @@ type BranchProtectionSpec struct {
 	RepositoryName  string `json:"repository_name"`
 	Pattern         string `json:"branch_pattern"`
 
-	// TODO: ids for users and teams are cumbersome - look into adding lookup logic so names can be passed
-
 	AllowsDeletions   *bool `json:"allows_deletions,omitempty"`
 	AllowsForcePushes *bool `json:"allows_force_pushes,omitempty"`
 	BlocksCreations   *bool `json:"blocks_creations,omitempty"`

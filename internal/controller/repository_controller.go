@@ -177,8 +177,8 @@ func (r *RepositoryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *RepositoryReconciler) createRepository(ctx context.Context, repo *githubv1alpha1.Repository) (*github.Repository, error) {
-	if repo.Spec.TemplateRepository != nil && repo.Spec.TemplateRepositoryOwner != nil {
-		repository, err := r.GitHubClient.CreateRepositoryFromTemplate(ctx, *repo.Spec.TemplateRepositoryOwner, *repo.Spec.TemplateRepository, &github.TemplateRepoRequest{
+	if repo.Spec.TemplateRepository != nil && repo.Spec.TemplateOwner != nil {
+		repository, err := r.GitHubClient.CreateRepositoryFromTemplate(ctx, *repo.Spec.TemplateOwner, *repo.Spec.TemplateRepository, &github.TemplateRepoRequest{
 			Name:               github.String(repo.Spec.Name),
 			Owner:              github.String(repo.Spec.Owner),
 			Description:        repo.Spec.Description,
@@ -428,7 +428,7 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 			Id:                          ghRepo.ID,
 			NodeID:                      ghRepo.NodeID,
 			OwnerLogin:                  github.String(ownerLogin),
-			OwnerId:                     github.Int64(ownerId),
+			OwnerNodeId:                 github.Int64(ownerId),
 			Name:                        ghRepo.Name,
 			FullName:                    ghRepo.FullName,
 			Description:                 ghRepo.Description,

@@ -597,43 +597,11 @@ func (r *BranchProtectionReconciler) branchProtectionToCreateInput(ctx context.C
 		id = repo.GetNodeID()
 	}
 
-	// var requiredApprovingReviewCount *githubv4.Int
-	// if bp.Spec.RequiredApprovingReviewCount != nil {
-	// 	val := (githubv4.Int)(*bp.Spec.RequiredApprovingReviewCount)
-	// 	requiredApprovingReviewCount = &val
-	// }
-
 	// rely on create then update
 	// slightly less efficient since it takes 2 api calls, but will require less work for now
 	// TODO: create with all fields populated to avoid 2 api calls
 	return &githubv4.CreateBranchProtectionRuleInput{
 		RepositoryID: id,
 		Pattern:      githubv4.String(bp.Spec.Pattern),
-		// 	RequiresApprovingReviews:       (*githubv4.Boolean)(bp.Spec.RequiresApprovingReviews),
-		// 	RequiredApprovingReviewCount:   requiredApprovingReviewCount,
-		// 	RequiresCommitSignatures:       (*githubv4.Boolean)(bp.Spec.RequiresCommitSignatures),
-		// 	RequiresLinearHistory:          (*githubv4.Boolean)(bp.Spec.RequiresLinearHistory),
-		// 	BlocksCreations:                (*githubv4.Boolean)(bp.Spec.BlocksCreations),
-		// 	AllowsForcePushes:              (*githubv4.Boolean)(bp.Spec.AllowsForcePushes),
-		// 	AllowsDeletions:                (*githubv4.Boolean)(bp.Spec.AllowsDeletions),
-		// 	IsAdminEnforced:                (*githubv4.Boolean)(bp.Spec.IsAdminEnforced),
-		// 	RequiresStatusChecks:           (*githubv4.Boolean)(bp.Spec.RequiresStatusChecks),
-		// 	RequiresStrictStatusChecks:     (*githubv4.Boolean)(bp.Spec.RequiresStatusChecks),
-		// 	RequiresCodeOwnerReviews:       (*githubv4.Boolean)(bp.Spec.RequiresCodeOwnerReviews),
-		// 	DismissesStaleReviews:          (*githubv4.Boolean)(bp.Spec.DismissesStaleReviews),
-		// 	RestrictsReviewDismissals:      (*githubv4.Boolean)(bp.Spec.RestrictsReviewDismissals),
-		// 	ReviewDismissalActorIDs:        &[]githubv4.ID{}, // TODO
-		// 	BypassPullRequestActorIDs:      &[]githubv4.ID{}, // TODO
-		// 	BypassForcePushActorIDs:        &[]githubv4.ID{}, // TODO
-		// 	RestrictsPushes:                (*githubv4.Boolean)(bp.Spec.RestrictsPushes),
-		// 	PushActorIDs:                   &[]githubv4.ID{},                       // TODO
-		// 	RequiredStatusCheckContexts:    &[]githubv4.String{},                   // TODO
-		// 	RequiredStatusChecks:           &[]githubv4.RequiredStatusCheckInput{}, // TODO
-		// 	RequiresDeployments:            (*githubv4.Boolean)(bp.Spec.RequiresDeployments),
-		// 	RequiredDeploymentEnvironments: &[]githubv4.String{}, // TODO
-		// 	RequiresConversationResolution: (*githubv4.Boolean)(bp.Spec.RequiresConversationResolution),
-		// 	RequireLastPushApproval:        (*githubv4.Boolean)(bp.Spec.RequireLastPushApproval),
-		// 	LockBranch:                     (*githubv4.Boolean)(bp.Spec.LockBranch),
-		// 	LockAllowsFetchAndMerge:        (*githubv4.Boolean)(bp.Spec.LockAllowsFetchAndMerge),
 	}, nil
 }

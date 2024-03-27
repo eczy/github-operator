@@ -886,8 +886,8 @@ func (in *RepositorySpec) DeepCopyInto(out *RepositorySpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.TemplateRepositoryOwner != nil {
-		in, out := &in.TemplateRepositoryOwner, &out.TemplateRepositoryOwner
+	if in.TemplateOwner != nil {
+		in, out := &in.TemplateOwner, &out.TemplateOwner
 		*out = new(string)
 		**out = **in
 	}
@@ -1045,8 +1045,8 @@ func (in *RepositoryStatus) DeepCopyInto(out *RepositoryStatus) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.OwnerId != nil {
-		in, out := &in.OwnerId, &out.OwnerId
+	if in.OwnerNodeId != nil {
+		in, out := &in.OwnerNodeId, &out.OwnerNodeId
 		*out = new(int64)
 		**out = **in
 	}
