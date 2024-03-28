@@ -42,9 +42,9 @@ var _ = Describe("Organization Controller", func() {
 	}
 
 	organization := &githubv1alpha1.Organization{}
-	existingOrgState := &github.Organization{}
+	beforeState := &github.Organization{}
 
-	Context("When reconciling a resource", func() {
+	Context("When updating an Organization resource", func() {
 		BeforeEach(func() {
 			By("Creating the custom resource for the Kind Organization")
 			err := k8sClient.Get(ctx, typeNamespacedName, organization)
@@ -62,35 +62,44 @@ var _ = Describe("Organization Controller", func() {
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
-
-			By("Storing the existing GitHub organization state")
-			existingOrgState, err = ghClient.GetOrganization(ctx, testOrganization)
+			By("Associating the Organization and GitHub organization")
+			controllerReconciler := &OrganizationReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
 			Expect(err).NotTo(HaveOccurred())
+
+			By("Storing the preexisting organization state")
+			o, err := ghClient.GetOrganization(ctx, testOrganization)
+			Expect(err).NotTo(HaveOccurred())
+			o.MembersCanCreateInternalRepos = nil
+			beforeState = o
 		})
 
 		AfterEach(func() {
 			resource := &githubv1alpha1.Organization{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 
 			By("Cleanup the specific resource instance Organization")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
-			By("Restoring the original GitHub organization state")
-			existingOrgState.MembersCanCreateInternalRepos = nil // required for non-enterprise orgs
-			_, err = ghClient.UpdateOrganization(ctx, testOrganization, existingOrgState)
+			By("Restoring the preexisting organization state")
+			_, err := ghClient.UpdateOrganization(ctx, testOrganization, beforeState)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should successfully update the resource's name", func() {
-			newName := testOrganization + "-modified"
-			By("Updating the resource name")
+		It("should successfully reconcile an updated Organization description", func() {
 			resource := &githubv1alpha1.Organization{}
+			By("Updating the Organization resource Spec description")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
-			resource.Spec.Name = newName
+			resource.Spec.Description = github.String("foobar")
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
-			By("Reconciling the created resource")
+			By("Reconciling the resource")
 			controllerReconciler := &OrganizationReconciler{
 				Client:       k8sClient,
 				Scheme:       k8sClient.Scheme(),
@@ -102,16 +111,48 @@ var _ = Describe("Organization Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking resource status")
+			By("Checking the Organization resource Status")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
-			Expect(resource.Status.NodeId).NotTo(BeNil())
+			Expect(resource.Status.Description).NotTo(BeNil())
+			Expect(*resource.Status.Description).To(Equal("foobar"))
 
-			By("Checking external state")
-			org, err := ghClient.GetOrganization(ctx, testOrganization)
+			By("Checking the GitHub organization")
+			ghOrg, err := ghClient.GetOrganization(ctx, testOrganization)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(org.Name).NotTo(BeNil())
-			Expect(*org.Name).To(Equal(newName))
+			Expect(ghOrg.Description).NotTo(BeNil())
+			Expect(*ghOrg.Description).To(Equal("foobar"))
 		})
-		// TODO: more fields
+
+		It("should successfully reconcile an updated Organization name", func() {
+			resource := &githubv1alpha1.Organization{}
+			newName := ghTestResourcePrefix + "foo"
+
+			By("Updating the Organization resource Spec name")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			resource.Spec.Name = newName
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Reconciling the resource")
+			controllerReconciler := &OrganizationReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the Organization resource Status")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			Expect(resource.Status.Name).To(Equal(newName))
+
+			By("Checking the GitHub organization")
+			ghOrg, err := ghClient.GetOrganization(ctx, testOrganization)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ghOrg.GetName()).To(Equal(newName))
+		})
+		// TODO: other fields
 	})
 })

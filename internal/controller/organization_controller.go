@@ -94,13 +94,8 @@ func (r *OrganizationReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		observed = ghOrg
 	}
 
-	// if external resource does't exist, check if scheduled for deletion
-	if observed == nil {
-		// if scheduled for deletion
-		if !org.ObjectMeta.DeletionTimestamp.IsZero() {
-			// do nothing and return since the external resource doesn't exist
-			return ctrl.Result{}, nil
-		}
+	// if external resource does't exist and we aren't deleting the resource, return error (since we can't create organizations)
+	if observed == nil && org.ObjectMeta.DeletionTimestamp.IsZero() {
 		// can't create organizations, so return not found error
 		return ctrl.Result{}, &gh.OrganizationNotFoundError{Login: &org.Spec.Login}
 	}
