@@ -110,22 +110,15 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		observed = ghTeam
 	}
 
-	// if external resource does't exist, check if scheduled for deletion
-	if observed == nil {
-		// if scheduled for deletion
-		if !team.ObjectMeta.DeletionTimestamp.IsZero() {
-			// do nothing and return since the external resource doesn't exist
-			return ctrl.Result{}, nil
-		} else {
-			// otherwise create the external resource
-			log.Info("creating team", "name", team.Spec.Name)
-			ghTeam, err := r.createTeam(ctx, team)
-			if err != nil {
-				log.Error(err, "unable to create GitHub Team", "name", team.Spec.Name)
-				return ctrl.Result{}, err
-			}
-			observed = ghTeam
+	// if external resource does't exist and we aren't deleting the resource, create external resource
+	if observed == nil && team.ObjectMeta.DeletionTimestamp.IsZero() {
+		log.Info("creating team", "name", team.Spec.Name)
+		ghTeam, err := r.createTeam(ctx, team)
+		if err != nil {
+			log.Error(err, "unable to create GitHub Team", "name", team.Spec.Name)
+			return ctrl.Result{}, err
 		}
+		observed = ghTeam
 	}
 
 	// handle finalizer
@@ -260,6 +253,7 @@ func (r *TeamReconciler) updateTeam(ctx context.Context, team *githubv1alpha1.Te
 			parentSlug = parent.Slug
 		}
 		team.Status = githubv1alpha1.TeamStatus{
+			NodeId:              ghTeam.NodeID,
 			Id:                  ghTeam.ID,
 			Slug:                ghTeam.Slug,
 			LastUpdateTimestamp: &now,

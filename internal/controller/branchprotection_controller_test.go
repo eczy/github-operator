@@ -46,6 +46,7 @@ var _ = Describe("BranchProtection Controller", func() {
 	}
 	branchprotection := &githubv1alpha1.BranchProtection{}
 	testRepoName := ghTestResourcePrefix + "branch-protection-test-repo"
+
 	Context("When creating a resource of Kind BranchProtection", func() {
 		var testRepo *github.Repository
 		BeforeEach(func() {
