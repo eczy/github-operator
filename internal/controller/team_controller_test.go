@@ -49,7 +49,6 @@ var _ = Describe("Team Controller", func() {
 		BeforeEach(func() {
 			By("Creating the custom resource for the Kind Team")
 			err := k8sClient.Get(ctx, typeNamespacedName, team)
-			Expect(err).To(HaveOccurred())
 			if err != nil && errors.IsNotFound(err) {
 				resource := &githubv1alpha1.Team{
 					ObjectMeta: metav1.ObjectMeta{
@@ -204,8 +203,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking the Team resource Status")
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			Expect(resource.Status.Description).NotTo(BeNil())
 			Expect(*resource.Status.Description).To(Equal("foobar"))
 
@@ -238,8 +236,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking the Team resource Status")
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			Expect(resource.Status.Name).NotTo(BeNil())
 			Expect(*resource.Status.Name).To(Equal(newName))
 
@@ -284,8 +281,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Checking the Team resource Status")
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			Expect(resource.Status.Repositories).Should(HaveKeyWithValue(testRepo.GetName(), (githubv1alpha1.RepositoryPermission)("pull")))
 
 			By("Checking the GitHub team")
@@ -345,8 +341,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Scheduling the resource for deletion")
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			// manually add finalizer
 			controllerutil.AddFinalizer(resource, teamFinalizerName)
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
@@ -370,8 +365,7 @@ var _ = Describe("Team Controller", func() {
 			resource := &githubv1alpha1.Team{}
 
 			By("Scheduling the resource for deletion")
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			// manually add finalizer
 			controllerutil.AddFinalizer(resource, teamFinalizerName)
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
@@ -386,7 +380,7 @@ var _ = Describe("Team Controller", func() {
 				GitHubClient:             ghClient,
 				DeleteOnResourceDeletion: true,
 			}
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -412,8 +406,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
 			By("Deleting the resource")
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
 				GracePeriodSeconds: &deletionGracePeriod,
 			})).To(Succeed())
@@ -423,7 +416,7 @@ var _ = Describe("Team Controller", func() {
 				GitHubClient:             ghClient,
 				DeleteOnResourceDeletion: true,
 			}
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -448,6 +441,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// don't add the finalizer manually since it's only added to the resource when DeleteOnResourceDeletion is enabled
+			// IF THIS BEHAVIOR CHANGES, THIS TEST NEEDS TO BE UPDATED
 
 			By("Deleting the resource")
 			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
@@ -461,6 +455,9 @@ var _ = Describe("Team Controller", func() {
 			By("Checking the GitHub team still exists")
 			_, err = ghClient.GetTeamByNodeId(ctx, ghTeam.GetNodeID())
 			Expect(err).NotTo(HaveOccurred())
+
+			By("Cleaning up the GitHub team")
+			Expect(ghClient.DeleteTeamById(ctx, ghTeam.GetOrganization().GetID(), ghTeam.GetID())).To(Succeed())
 		})
 	})
 })
