@@ -115,7 +115,7 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		log.Info("creating team", "name", team.Spec.Name)
 		ghTeam, err := r.createTeam(ctx, team)
 		if err != nil {
-			log.Error(err, "unable to create GitHub Team", "name", team.Spec.Name)
+			log.Error(err, "error creating GitHub team")
 			return ctrl.Result{}, err
 		}
 		observed = ghTeam

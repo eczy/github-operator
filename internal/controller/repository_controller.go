@@ -98,9 +98,8 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 		observed = ghTeam
 	} else {
-		// TODO: owner not necessarily the same as owner login - need to convert
 		ghRepo, err := r.GitHubClient.GetRepositoryByName(ctx, repo.Spec.Owner, repo.Spec.Name)
-		if _, ok := err.(*gh.TeamNotFoundError); ok {
+		if _, ok := err.(*gh.RepositoryNotFoundError); ok {
 			log.Info(err.Error())
 		} else if err != nil {
 			log.Error(err, "error fetching GitHub repository")
@@ -109,21 +108,14 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		observed = ghRepo
 	}
 
-	// if external resource does't exist, check if scheduled for deletion
-	if observed == nil {
-		// if scheduled for deletion
-		if !repo.ObjectMeta.DeletionTimestamp.IsZero() {
-			// do nothing and return since the external resource doesn't exist
-			return ctrl.Result{}, nil
-		} else {
-			// otherwise create the external resource
-			ghRepo, err := r.createRepository(ctx, repo)
-			if err != nil {
-				log.Error(err, "error creating repository", "name", repo.Spec.Name)
-				return ctrl.Result{}, err
-			}
-			observed = ghRepo
+	// if external resource does't exist and we aren't deleting the resource, create external resource
+	if observed == nil && repo.ObjectMeta.DeletionTimestamp.IsZero() {
+		ghTeam, err := r.createRepository(ctx, repo)
+		if err != nil {
+			log.Error(err, "error creating GitHub repository")
+			return ctrl.Result{}, err
 		}
+		observed = ghTeam
 	}
 
 	// handle finalizer

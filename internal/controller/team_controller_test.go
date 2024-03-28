@@ -43,7 +43,7 @@ var _ = Describe("Team Controller", func() {
 	}
 
 	team := &githubv1alpha1.Team{}
-	var testTeamName string = ghTestResourcePrefix + "team0"
+	testTeamName := ghTestResourcePrefix + "team0"
 
 	Context("When creating a Team resource", func() {
 		BeforeEach(func() {
@@ -135,7 +135,7 @@ var _ = Describe("Team Controller", func() {
 	})
 
 	Context("When updating a Team resource", func() {
-		var ghTeam *github.Team // temporarily store the created GitHub team reference for each test
+		var ghTeam *github.Team // temporarily store the created GitHub reference for each test
 		BeforeEach(func() {
 			By("Creating the custom resource for the Kind Team")
 			err := k8sClient.Get(ctx, typeNamespacedName, team)
@@ -183,7 +183,7 @@ var _ = Describe("Team Controller", func() {
 			ghTeam = nil
 		})
 
-		It("should successfully reconcile an updated resource's description", func() {
+		It("should successfully reconcile an updated Team description", func() {
 			resource := &githubv1alpha1.Team{}
 			By("Updating the Team resource Spec description")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
@@ -214,7 +214,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(*ghTeam.Description).To(Equal("foobar"))
 		})
 
-		It("should successfully reconcile an updated resource's name", func() {
+		It("should successfully reconcile an updated Team name", func() {
 			resource := &githubv1alpha1.Team{}
 			newName := ghTestResourcePrefix + "foo"
 
@@ -246,7 +246,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(ghTeam.GetName()).To(Equal(newName))
 		})
 
-		It("should successfully reconcile an updated team's repository permissions", func() {
+		It("should successfully reconcile an updated Team repository permissions", func() {
 			resource := &githubv1alpha1.Team{}
 
 			By("Creating a new repository to test permissions")
@@ -291,8 +291,9 @@ var _ = Describe("Team Controller", func() {
 		})
 		// TODO: other fields
 	})
+
 	Context("When deleting a Team resource", func() {
-		var ghTeam *github.Team // temporarily store the created GitHub team reference for each test
+		var ghTeam *github.Team // temporarily store the created GitHub reference for each test
 		BeforeEach(func() {
 			By("Creating the custom resource for the Kind Team")
 			err := k8sClient.Get(ctx, typeNamespacedName, team)
@@ -360,7 +361,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should delete a resource without affecting an unmanaged external resource", func() {
+		It("should delete a Team resource without affecting an unmanaged external resource", func() {
 			// when not managed before deletion
 			resource := &githubv1alpha1.Team{}
 
