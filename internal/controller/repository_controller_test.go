@@ -42,70 +42,11 @@ var _ = Describe("Repository Controller", func() {
 		Name:      resourceName,
 		Namespace: "default",
 	}
+
 	repository := &githubv1alpha1.Repository{}
+	testRepositoryName := ghTestResourcePrefix + "testrepo"
 
-	testRepositoryName := "testrepo"
-
-	Context("When creating a resource", func() {
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind Repository")
-			err := k8sClient.Get(ctx, typeNamespacedName, repository)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &githubv1alpha1.Repository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					Spec: githubv1alpha1.RepositorySpec{
-						Name:  testRepositoryName,
-						Owner: testOrganization,
-					},
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-			}
-		})
-
-		AfterEach(func() {
-			resource := &githubv1alpha1.Repository{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance Repository")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-
-			By("Cleanup the external resource")
-			Expect(ghClient.DeleteRepositoryBySlug(ctx, testOrganization, testRepositoryName))
-		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &RepositoryReconciler{
-				Client:       k8sClient,
-				Scheme:       k8sClient.Scheme(),
-				GitHubClient: ghClient,
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Checking resource Status")
-			resource := &githubv1alpha1.Repository{}
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.LastUpdateTimestamp.Time).NotTo(BeNil())
-			Expect(resource.Status.Name).NotTo(BeNil())
-			Expect(*resource.Status.Name).To(Equal(testRepositoryName))
-			Expect(resource.Status.Id).NotTo(BeNil())
-
-			By("Checking external resource")
-			ghRepo, err := ghClient.GetRepositoryBySlug(ctx, testOrganization, testRepositoryName)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ghRepo.Name).NotTo(BeNil())
-			Expect(*ghRepo.Name).To(Equal(testRepositoryName))
-		})
-	})
-	Context("When updating a resource", func() {
+	Context("When creating a Repository resource", func() {
 		BeforeEach(func() {
 			By("Creating the custom resource for the Kind Repository")
 			err := k8sClient.Get(ctx, typeNamespacedName, repository)
@@ -122,97 +63,22 @@ var _ = Describe("Repository Controller", func() {
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
-
-			By("Setup the external resource")
-			_, err = ghClient.CreateRepository(ctx, testOrganization, &github.Repository{
-				Name:        &testRepositoryName,
-				Description: github.String("foo"),
-			})
-			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
 			resource := &githubv1alpha1.Repository{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 
 			By("Cleanup the specific resource instance Repository")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-
-			By("Cleanup the external resource")
-			Expect(ghClient.DeleteRepositoryBySlug(ctx, testOrganization, testRepositoryName))
 		})
 
-		It("should successfully update the resource Name", func() {
-			newName := testRepositoryName + "-foo"
-
-			// need to associate the repo before modifying
-			By("Reconciling the resource (1/3)")
-			controllerReconciler := &RepositoryReconciler{
-				Client:       k8sClient,
-				Scheme:       k8sClient.Scheme(),
-				GitHubClient: ghClient,
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			By("Updating the resource Spec.Name")
+		It("should create a new Repository resource and a new GitHub repository", func() {
 			resource := &githubv1alpha1.Repository{}
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			resource.Spec.Name = newName
-			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
-			By("Reconciling the resource (2/3)")
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			By("Checking resource Status")
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.Name).NotTo(BeNil())
-			Expect(*resource.Status.Name).To(Equal(newName))
-			Expect(resource.Status.Id).NotTo(BeNil())
-
-			By("Checking external resource")
-			ghRepo, err := ghClient.GetRepositoryBySlug(ctx, testOrganization, newName)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ghRepo.Name).NotTo(BeNil())
-
-			By("Updating the resource Spec.Name")
-			resource.Spec.Name = testRepositoryName
-			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
-
-			By("Reconciling the resource (3/3)")
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-
-			Expect(err).NotTo(HaveOccurred())
-			By("Checking resource Status")
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.Name).NotTo(BeNil())
-			Expect(*resource.Status.Name).To(Equal(testRepositoryName))
-			Expect(resource.Status.Id).NotTo(BeNil())
-
-			By("Checking external resource")
-			ghRepo, err = ghClient.GetRepositoryBySlug(ctx, testOrganization, testRepositoryName)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ghRepo.Name).NotTo(BeNil())
-		})
-
-		It("should successfully update the resource Description", func() {
-			newDescription := "bar"
-			By("Updating the resource Spec.Name")
-			resource := &githubv1alpha1.Repository{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			resource.Spec.Description = &newDescription
-			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+			By("Checking the GitHub repository doesn't exist")
+			_, err := ghClient.GetRepositoryByName(ctx, testOrganization, testRepositoryName)
+			Expect(err).To(HaveOccurred())
 
 			By("Reconciling the resource")
 			controllerReconciler := &RepositoryReconciler{
@@ -225,21 +91,54 @@ var _ = Describe("Repository Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			By("Checking resource Status")
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.Description).NotTo(BeNil())
-			Expect(*resource.Status.Description).To(Equal(newDescription))
-			Expect(resource.Status.Id).NotTo(BeNil())
 
-			By("Checking external resource")
-			ghRepo, err := ghClient.GetRepositoryBySlug(ctx, testOrganization, testRepositoryName)
+			By("Checking the Repository Status")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			Expect(resource.Status.NodeId).NotTo(Equal(nil))
+
+			By("Checking the GitHub Repository exists")
+			_, err = ghClient.GetRepositoryByName(ctx, testOrganization, testRepositoryName)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ghRepo.Description).NotTo(BeNil())
-			Expect(*ghRepo.Description).To(Equal(newDescription))
+
+			By("Cleaning up the GitHub repository")
+			Expect(ghClient.DeleteRepositoryByName(ctx, testOrganization, testRepositoryName)).To(Succeed())
+		})
+
+		It("should create a new Repository resource managing an existing GitHub repository", func() {
+			resource := &githubv1alpha1.Repository{}
+
+			By("Creating a matching GitHub repository")
+			ghRepo, err := ghClient.CreateRepository(ctx, testOrganization, &github.Repository{
+				Name: github.String(testRepositoryName),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			defer func() {
+				By("Cleaning up the GitHub repository")
+				Expect(ghClient.DeleteRepositoryByName(ctx, testOrganization, testRepositoryName)).To(Succeed())
+			}()
+
+			By("Reconciling the resource")
+			controllerReconciler := &RepositoryReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the Repository Status")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			Expect(resource.Status.NodeId).NotTo(BeNil())
+			Expect(*resource.Status.NodeId).To(Equal(ghRepo.GetNodeID()))
 		})
 	})
-	Context("When deleting a resource", func() {
+
+	Context("When updating a Repository resource", func() {
+		var ghRepository *github.Repository // temporarily store the created GitHub reference for each test
 		BeforeEach(func() {
 			By("Creating the custom resource for the Kind Repository")
 			err := k8sClient.Get(ctx, typeNamespacedName, repository)
@@ -257,16 +156,141 @@ var _ = Describe("Repository Controller", func() {
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 
-			By("Setup the external resource")
-			_, err = ghClient.CreateRepository(ctx, testOrganization, &github.Repository{
+			By("Creating a matching GitHub repository")
+			r, err := ghClient.CreateRepository(ctx, testOrganization, &github.Repository{
 				Name: &testRepositoryName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			ghRepository = r
+
+			By("Associating the Repository and GitHub repository")
+			controllerReconciler := &RepositoryReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should successfully reconcile the resource", func() {
-			// when associated before deletion
-			By("Associating the resource with the external resource")
+		AfterEach(func() {
+			resource := &githubv1alpha1.Repository{}
+			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Cleanup the specific resource instance Repository")
+			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+			By("Cleanup the matching GitHub repository")
+			Expect(ghClient.DeleteRepositoryByName(ctx, ghRepository.GetOrganization().GetLogin(), ghRepository.GetName())).To(Succeed())
+			ghRepository = nil
+		})
+
+		It("should successfully reconcile an updated Repository description", func() {
+			resource := &githubv1alpha1.Repository{}
+			By("Updating the Repository resource Spec description")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			resource.Spec.Description = github.String("foobar")
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Reconciling the resource")
+			controllerReconciler := &RepositoryReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the Repository resource Status")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			Expect(resource.Status.Description).NotTo(BeNil())
+			Expect(*resource.Status.Description).To(Equal("foobar"))
+
+			By("Checking the GitHub repository")
+			ghRepository, err := ghClient.GetRepositoryByNodeId(ctx, ghRepository.GetNodeID())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ghRepository.Description).NotTo(BeNil())
+			Expect(*ghRepository.Description).To(Equal("foobar"))
+		})
+
+		It("should successfully reconcile an updated Repository name", func() {
+			resource := &githubv1alpha1.Repository{}
+			newName := ghTestResourcePrefix + "foo"
+
+			By("Updating the Repository resource Spec name")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			resource.Spec.Name = newName
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Reconciling the resource")
+			controllerReconciler := &RepositoryReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the Repository resource Status")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			Expect(resource.Status.Name).NotTo(BeNil())
+			Expect(*resource.Status.Name).To(Equal(newName))
+
+			By("Checking the GitHub repository")
+			ghRepository, err := ghClient.GetRepositoryByNodeId(ctx, ghRepository.GetNodeID())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ghRepository.GetName()).To(Equal(newName))
+		})
+		// TODO more fields
+	})
+
+	Context("When deleting a resource", func() {
+		var ghRepository *github.Repository // temporarily store the created GitHub reference for each test
+		BeforeEach(func() {
+			By("Creating the custom resource for the Kind Repository")
+			err := k8sClient.Get(ctx, typeNamespacedName, repository)
+			if err != nil && errors.IsNotFound(err) {
+				resource := &githubv1alpha1.Repository{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceName,
+						Namespace: "default",
+					},
+					Spec: githubv1alpha1.RepositorySpec{
+						Name:  testRepositoryName,
+						Owner: testOrganization,
+					},
+				}
+				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			}
+
+			By("Creating a matching GitHub repository")
+			r, err := ghClient.CreateRepository(ctx, testOrganization, &github.Repository{
+				Name: &testRepositoryName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			ghRepository = r
+		})
+
+		AfterEach(func() {
+			By("Check the specific resource instance Repository is deleted")
+			resource := &githubv1alpha1.Repository{}
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).NotTo(Succeed())
+		})
+
+		It("should delete a Repository resource and a managed GitHub repository", func() {
+			// when managed before deletion
+			resource := &githubv1alpha1.Repository{}
+
+			By("Associating the Repository resource with the GitHub repository")
 			controllerReconciler := &RepositoryReconciler{
 				Client:                   k8sClient,
 				Scheme:                   k8sClient.Scheme(),
@@ -279,9 +303,7 @@ var _ = Describe("Repository Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Scheduling the resource for deletion")
-			resource := &githubv1alpha1.Repository{}
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			// manually add finalizer
 			controllerutil.AddFinalizer(resource, repositoryFinalizerName)
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
@@ -295,9 +317,109 @@ var _ = Describe("Repository Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking the external resource does not exist")
-			_, err = ghClient.GetRepositoryBySlug(ctx, testOrganization, testRepositoryName)
+			By("Checking the GitHub repository does not exist")
+			_, err = ghClient.GetRepositoryByNodeId(ctx, ghRepository.GetNodeID())
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("should delete a Repository resource without affecting an unmanaged external repository", func() {
+			// when not managed before deletion
+			resource := &githubv1alpha1.Repository{}
+
+			By("Scheduling the resource for deletion")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			// manually add finalizer
+			controllerutil.AddFinalizer(resource, repositoryFinalizerName)
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Deleting the resource")
+			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
+				GracePeriodSeconds: &deletionGracePeriod,
+			})).To(Succeed())
+			controllerReconciler := &RepositoryReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				GitHubClient:             ghClient,
+				DeleteOnResourceDeletion: true,
+			}
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the GitHub repository still exists")
+			_, err = ghClient.GetRepositoryByNodeId(ctx, ghRepository.GetNodeID())
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Cleaning up the GitHub repository")
+			Expect(ghClient.DeleteRepositoryByName(ctx, testOrganization, testRepositoryName)).To(Succeed(), "this may change if BeforeEach is modified")
+		})
+
+		It("should delete a Repository resource when there is no matching GitHub repository", func() {
+			resource := &githubv1alpha1.Repository{}
+
+			By("Checking there is no matching GitHub repository")
+			Expect(ghClient.DeleteRepositoryByName(ctx, ghRepository.Organization.GetLogin(), ghRepository.GetName())).To(Succeed(), "this may change if BeforeEach is modified")
+
+			By("Scheduling the resource for deletion")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			// manually add finalizer
+			controllerutil.AddFinalizer(resource, repositoryFinalizerName)
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			By("Deleting the resource")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
+				GracePeriodSeconds: &deletionGracePeriod,
+			})).To(Succeed())
+			controllerReconciler := &RepositoryReconciler{
+				Client:                   k8sClient,
+				Scheme:                   k8sClient.Scheme(),
+				GitHubClient:             ghClient,
+				DeleteOnResourceDeletion: true,
+			}
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should delete a Repository resource without deleting the GitHub repository", func() {
+			// when DeleteOnResourceDeletion isn't enabled
+			resource := &githubv1alpha1.Repository{}
+
+			By("Fetching the current resource")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+
+			By("Associating the Repository resource with the GitHub repository")
+			controllerReconciler := &RepositoryReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// don't add the finalizer manually since it's only added to the resource when DeleteOnResourceDeletion is enabled
+			// IF THIS BEHAVIOR CHANGES, THIS TEST NEEDS TO BE UPDATED
+
+			By("Deleting the resource")
+			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
+				GracePeriodSeconds: &deletionGracePeriod,
+			})).To(Succeed())
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the GitHub repository still exists")
+			_, err = ghClient.GetRepositoryByNodeId(ctx, ghRepository.GetNodeID())
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Cleaning up the GitHub repository")
+			Expect(ghClient.DeleteRepositoryByName(ctx, ghRepository.GetOrganization().GetLogin(), ghRepository.GetName())).To(Succeed())
 		})
 	})
 })

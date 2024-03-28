@@ -7,7 +7,7 @@ import (
 )
 
 // Repositories
-func (c *Client) GetRepositoryBySlug(ctx context.Context, owner string, name string) (*github.Repository, error) {
+func (c *Client) GetRepositoryByName(ctx context.Context, owner string, name string) (*github.Repository, error) {
 	repo, resp, err := c.rest.Repositories.Get(ctx, owner, name)
 	if resp.StatusCode == 404 {
 		return nil, &RepositoryNotFoundError{
@@ -20,7 +20,43 @@ func (c *Client) GetRepositoryBySlug(ctx context.Context, owner string, name str
 	return repo, nil
 }
 
-func (c *Client) UpdateRepositoryBySlug(ctx context.Context, owner, name string, update *github.Repository) (*github.Repository, error) {
+func (c *Client) GetRepositoryByDatabaseId(ctx context.Context, dbId int64) (*github.Repository, error) {
+	repo, resp, err := c.rest.Repositories.GetByID(ctx, dbId)
+	if resp.StatusCode == 404 {
+		return nil, &RepositoryNotFoundError{
+			Id: &dbId,
+		}
+	} else if err != nil {
+		return nil, err
+	}
+	return repo, nil
+}
+
+func (c *Client) GetRepositoryByNodeId(ctx context.Context, nodeId string) (*github.Repository, error) {
+	// TOOD: this is inefficient since it takes two API calls.
+	// This is done this way for the moment since it lets us update an existing resource in event of naming changes.
+	// In the future, we should probably move to an explicit internal data structure instead
+	// of relying on a library and define conversions.
+	var q struct {
+		Node struct {
+			Repository struct {
+				DatabaseId int64
+			} `graphql:"... on Repository"`
+		} `graphql:"node(id: $nodeId)"`
+	}
+
+	variables := map[string]interface{}{
+		"nodeId": nodeId,
+	}
+
+	err := c.graphql.Query(ctx, &q, variables)
+	if err != nil {
+		return nil, err
+	}
+	return c.GetRepositoryByDatabaseId(ctx, q.Node.Repository.DatabaseId)
+}
+
+func (c *Client) UpdateRepositoryByName(ctx context.Context, owner, name string, update *github.Repository) (*github.Repository, error) {
 	repo, _, err := c.rest.Repositories.Edit(ctx, owner, name, update)
 	if err != nil {
 		return nil, err
@@ -54,7 +90,7 @@ func (c *Client) UpdateRepositoryTopics(ctx context.Context, owner string, repo 
 	return newTopics, nil
 }
 
-func (c *Client) DeleteRepositoryBySlug(ctx context.Context, owner, name string) error {
+func (c *Client) DeleteRepositoryByName(ctx context.Context, owner, name string) error {
 	_, err := c.rest.Repositories.Delete(ctx, owner, name)
 	return err
 }

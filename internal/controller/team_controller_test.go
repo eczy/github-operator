@@ -32,8 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var testTeamName string = ghTestResourcePrefix + "team0"
-
 var _ = Describe("Team Controller", func() {
 	const resourceName = "test-resource"
 
@@ -45,10 +43,11 @@ var _ = Describe("Team Controller", func() {
 	}
 
 	team := &githubv1alpha1.Team{}
+	testTeamName := ghTestResourcePrefix + "team0"
 
-	Context("When creating a resource", func() {
+	Context("When creating a Team resource", func() {
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Team")
+			By("Creating the custom resource for the Kind Team")
 			err := k8sClient.Get(ctx, typeNamespacedName, team)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &githubv1alpha1.Team{
@@ -59,7 +58,6 @@ var _ = Describe("Team Controller", func() {
 					Spec: githubv1alpha1.TeamSpec{
 						Organization: testOrganization,
 						Name:         testTeamName,
-						Description:  github.String("foo"),
 					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -68,23 +66,20 @@ var _ = Describe("Team Controller", func() {
 
 		AfterEach(func() {
 			resource := &githubv1alpha1.Team{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 
 			By("Cleanup the specific resource instance Team")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-
-			By("Cleanup the external resource")
-			err = ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)
-			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should create a new resource and external resource", func() {
-			By("Checking the external resource doesn't exist")
+		It("should create a new Team resource and a new GitHub team", func() {
+			resource := &githubv1alpha1.Team{}
+
+			By("Checking the GitHub team doesn't exist")
 			_, err := ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
 			Expect(err).To(HaveOccurred())
 
-			By("Creating the resource")
+			By("Reconciling the resource")
 			controllerReconciler := &TeamReconciler{
 				Client:       k8sClient,
 				Scheme:       k8sClient.Scheme(),
@@ -94,26 +89,34 @@ var _ = Describe("Team Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			By("Checking the resource Status")
-			resource := &githubv1alpha1.Team{}
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.Id).NotTo(Equal(nil))
 
-			By("Checking the external resource exists")
+			By("Checking the Team Status")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			Expect(resource.Status.NodeId).NotTo(Equal(nil))
+
+			By("Checking the GitHub team exists")
 			_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
 			Expect(err).NotTo(HaveOccurred())
+
+			By("Cleaning up the GitHub team")
+			Expect(ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)).To(Succeed())
 		})
 
-		It("should create a new resource managing an external resource", func() {
-			By("Creating a matching external resource")
-			_, err := ghClient.CreateTeam(ctx, testOrganization, github.NewTeam{
-				Name:        testTeamName,
-				Description: github.String("foo"),
+		It("should create a new Team resource managing an existing GitHub team", func() {
+			resource := &githubv1alpha1.Team{}
+
+			By("Creating a matching GitHub team")
+			ghTeam, err := ghClient.CreateTeam(ctx, testOrganization, github.NewTeam{
+				Name: testTeamName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Creating the resource")
+			defer func() {
+				By("Cleaning up the GitHub team")
+				Expect(ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)).To(Succeed())
+			}()
+
+			By("Reconciling the resource")
 			controllerReconciler := &TeamReconciler{
 				Client:       k8sClient,
 				Scheme:       k8sClient.Scheme(),
@@ -124,20 +127,17 @@ var _ = Describe("Team Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking the resource Status")
-			resource := &githubv1alpha1.Team{}
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resource.Status.Id).NotTo(Equal(nil))
-
-			By("Checking the matching external resource is now managed")
-			_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
-			Expect(err).NotTo(HaveOccurred())
+			By("Checking the Team Status")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			Expect(resource.Status.NodeId).NotTo(BeNil())
+			Expect(*resource.Status.NodeId).To(Equal(ghTeam.GetNodeID()))
 		})
 	})
-	Context("When updating a resource", func() {
+
+	Context("When updating a Team resource", func() {
+		var ghTeam *github.Team // temporarily store the created GitHub reference for each test
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Team")
+			By("Creating the custom resource for the Kind Team")
 			err := k8sClient.Get(ctx, typeNamespacedName, team)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &githubv1alpha1.Team{
@@ -148,34 +148,48 @@ var _ = Describe("Team Controller", func() {
 					Spec: githubv1alpha1.TeamSpec{
 						Organization: testOrganization,
 						Name:         testTeamName,
-						Description:  github.String("foo"),
 					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
-			By("creating the corresponding external resource")
-			// everything but name is default
-			// update in individual tests to test specific updates
-			_, err = ghClient.CreateTeam(ctx, testOrganization, github.NewTeam{
+			By("Creating a matching GitHub team")
+			t, err := ghClient.CreateTeam(ctx, testOrganization, github.NewTeam{
 				Name: testTeamName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			ghTeam = t
+
+			By("Associating the Team and GitHub team")
+			controllerReconciler := &TeamReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
 			resource := &githubv1alpha1.Team{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 
 			By("Cleanup the specific resource instance Team")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
-			By("Cleanup the external resource")
-			err = ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)
-			Expect(err).NotTo(HaveOccurred())
+			By("Cleanup the matching GitHub team")
+			Expect(ghClient.DeleteTeamById(ctx, ghTeam.GetOrganization().GetID(), ghTeam.GetID())).To(Succeed())
+			ghTeam = nil
 		})
 
-		It("should successfully reconcile an updated resource's description", func() {
+		It("should successfully reconcile an updated Team description", func() {
+			resource := &githubv1alpha1.Team{}
+			By("Updating the Team resource Spec description")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			resource.Spec.Description = github.String("foobar")
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
 			By("Reconciling the resource")
 			controllerReconciler := &TeamReconciler{
 				Client:       k8sClient,
@@ -188,99 +202,70 @@ var _ = Describe("Team Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking the resource Status")
-			resource := &githubv1alpha1.Team{}
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			By("Checking the Team resource Status")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			Expect(resource.Status.Description).NotTo(BeNil())
-			Expect(*resource.Status.Description).To(Equal("foo"))
+			Expect(*resource.Status.Description).To(Equal("foobar"))
 
-			By("Checking the external resource")
-			ghTeam, err := ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
+			By("Checking the GitHub team")
+			ghTeam, err := ghClient.GetTeamByNodeId(ctx, ghTeam.GetNodeID())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ghTeam.Description).NotTo(BeNil())
-			Expect(*ghTeam.Description).To(Equal("foo"))
+			Expect(*ghTeam.Description).To(Equal("foobar"))
 		})
 
-		It("should successfully reconcile an updated resource's name", func() {
-			By("Reconciling the resource (1/3)")
-			controllerReconciler := &TeamReconciler{
-				Client:       k8sClient,
-				Scheme:       k8sClient.Scheme(),
-				GitHubClient: ghClient,
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Updating the resource Spec.Name")
+		It("should successfully reconcile an updated Team name", func() {
 			resource := &githubv1alpha1.Team{}
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			newName := ghTestResourcePrefix + "foo"
 
-			originalName := resource.Spec.Name
-			newName := ghTestResourcePrefix + "team1"
+			By("Updating the Team resource Spec name")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			resource.Spec.Name = newName
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
-			By("Reconciling the resource (2/3)")
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+			By("Reconciling the resource")
+			controllerReconciler := &TeamReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking the external resource")
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			ghTeam, err := ghClient.GetTeamBySlug(ctx, testOrganization, *resource.Status.Slug)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ghTeam.Name).NotTo(BeNil())
-			Expect(*ghTeam.Name).To(Equal(newName))
-
-			By("Restoring the resource Spec.Name")
+			By("Checking the Team resource Status")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
-			resource.Spec.Name = originalName
-			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+			Expect(resource.Status.Name).NotTo(BeNil())
+			Expect(*resource.Status.Name).To(Equal(newName))
 
-			By("Reconciling the resource (3/3)")
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
+			By("Checking the GitHub team")
+			ghTeam, err := ghClient.GetTeamByNodeId(ctx, ghTeam.GetNodeID())
 			Expect(err).NotTo(HaveOccurred())
-
-			By("Checking the resource Status")
-			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
-
-			By("Checking the external resource")
-			ghTeam, err = ghClient.GetTeamBySlug(ctx, testOrganization, *resource.Status.Slug)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ghTeam.Name).NotTo(BeNil())
-			Expect(*ghTeam.Name).To(Equal(originalName))
+			Expect(ghTeam.GetName()).To(Equal(newName))
 		})
-		It("should successfully reconcile an updated team's repository permissions", func() {
-			var testRepo *github.Repository
-			resource := &githubv1alpha1.Team{}
-			testPermission := "admin"
-			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 
-			By("Creating a test repository")
-			repo, err := ghClient.CreateRepository(ctx, testOrganization, &github.Repository{
-				Name: github.String(ghTestResourcePrefix + "test0"),
+		It("should successfully reconcile an updated Team repository permissions", func() {
+			resource := &githubv1alpha1.Team{}
+
+			By("Creating a new repository to test permissions")
+			testRepo, err := ghClient.CreateRepository(ctx, testOrganization, &github.Repository{
+				Name:       github.String(ghTestResourcePrefix + "team-test"),
+				Visibility: github.String("private"),
 			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(repo).NotTo(BeNil())
-			testRepo = repo
 
 			defer func() {
 				By("Cleaning up the test repository")
-				Expect(ghClient.DeleteRepositoryBySlug(ctx, testRepo.GetOwner().GetLogin(), testRepo.GetName())).To(Succeed())
+				Expect(ghClient.DeleteRepositoryByName(ctx, testRepo.GetOwner().GetLogin(), testRepo.GetName())).To(Succeed())
 			}()
 
-			By("Assigning team permission to the resource")
-			resource.Spec.Repositories = map[string]githubv1alpha1.RepositoryPermission{repo.GetName(): githubv1alpha1.RepositoryPermission(testPermission)}
+			By("Updating the Team resource Spec repositories")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			resource.Spec.Repositories = map[string]githubv1alpha1.RepositoryPermission{
+				testRepo.GetName(): "pull",
+			}
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
 			By("Reconciling the resource")
@@ -295,29 +280,20 @@ var _ = Describe("Team Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking the external resource")
-			permission, err := ghClient.GetTeamRepositoryPermission(ctx, testOrganization, testTeamName, testRepo.GetName())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(permission.Permission).To(Equal(testPermission))
-
-			By("Removing team permission from the resource")
+			By("Checking the Team resource Status")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
-			resource.Spec.Repositories = map[string]githubv1alpha1.RepositoryPermission{}
-			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+			Expect(resource.Status.Repositories).Should(HaveKeyWithValue(testRepo.GetName(), (githubv1alpha1.RepositoryPermission)("pull")))
 
-			By("Reconciling the resource")
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
+			By("Checking the GitHub team")
+			rp, err := ghClient.GetTeamRepositoryPermission(ctx, testOrganization, testTeamName, testRepo.GetName())
 			Expect(err).NotTo(HaveOccurred())
-
-			By("Checking the external resource")
-			_, err = ghClient.GetTeamRepositoryPermission(ctx, testOrganization, testTeamName, testRepo.GetName())
-			Expect(err).To(HaveOccurred())
+			Expect(rp.Permission).To(Equal("pull"))
 		})
 		// TODO: other fields
 	})
-	Context("When deleting a resource", func() {
+
+	Context("When deleting a Team resource", func() {
+		var ghTeam *github.Team // temporarily store the created GitHub reference for each test
 		BeforeEach(func() {
 			By("Creating the custom resource for the Kind Team")
 			err := k8sClient.Get(ctx, typeNamespacedName, team)
@@ -335,23 +311,25 @@ var _ = Describe("Team Controller", func() {
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 
-			By("Creating the corresponding external resource")
-			_, err = ghClient.CreateTeam(ctx, testOrganization, github.NewTeam{
+			By("Creating a matching GitHub team")
+			t, err := ghClient.CreateTeam(ctx, testOrganization, github.NewTeam{
 				Name: testTeamName,
 			})
 			Expect(err).NotTo(HaveOccurred())
+			ghTeam = t
 		})
 
 		AfterEach(func() {
 			By("Check the specific resource instance Team is deleted")
 			resource := &githubv1alpha1.Team{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).To(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).NotTo(Succeed())
 		})
 
-		It("should delete a resource and the associated external resource", func() {
-			// when associated before deletion
-			By("Associating the resource with the external resource")
+		It("should delete a Team resource and a managed GitHub team", func() {
+			// when managed before deletion
+			resource := &githubv1alpha1.Team{}
+
+			By("Associating the Team resource with the GitHub team")
 			controllerReconciler := &TeamReconciler{
 				Client:                   k8sClient,
 				Scheme:                   k8sClient.Scheme(),
@@ -364,9 +342,7 @@ var _ = Describe("Team Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Scheduling the resource for deletion")
-			resource := &githubv1alpha1.Team{}
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			// manually add finalizer
 			controllerutil.AddFinalizer(resource, teamFinalizerName)
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
@@ -380,18 +356,17 @@ var _ = Describe("Team Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking the external resource does not exist")
-			_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
+			By("Checking the GitHub team does not exist")
+			_, err = ghClient.GetTeamByNodeId(ctx, ghTeam.GetNodeID())
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should delete a resource without affecting an unassociated external resource", func() {
-			// i.e. if we are deleting on the first reconciliation of a resource, don't touch
-			// external state
-			By("Scheduling the resource for deletion")
+		It("should delete a Team resource without affecting an unmanaged external resource", func() {
+			// when not managed before deletion
 			resource := &githubv1alpha1.Team{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+
+			By("Scheduling the resource for deletion")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			// manually add finalizer
 			controllerutil.AddFinalizer(resource, teamFinalizerName)
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
@@ -406,29 +381,33 @@ var _ = Describe("Team Controller", func() {
 				GitHubClient:             ghClient,
 				DeleteOnResourceDeletion: true,
 			}
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking the external resource still exists")
-			_, err = ghClient.GetTeamBySlug(ctx, testOrganization, testTeamName)
+			By("Checking the GitHub team still exists")
+			_, err = ghClient.GetTeamByNodeId(ctx, ghTeam.GetNodeID())
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleaning up the external resource")
-			err = ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)
-			Expect(err).NotTo(HaveOccurred(), "this may change if BeforeEach is modified")
+			By("Cleaning up the GitHub team")
+			Expect(ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)).To(Succeed(), "this may change if BeforeEach is modified")
 		})
 
-		It("should delete a resource when there is no external resource", func() {
-			By("Checking there is no matching external resource")
-			err := ghClient.DeleteTeamBySlug(ctx, testOrganization, testTeamName)
-			Expect(err).NotTo(HaveOccurred(), "this may change if BeforeEach is modified")
+		It("should delete a Team resource when there is no matching GitHub team", func() {
+			resource := &githubv1alpha1.Team{}
+
+			By("Checking there is no matching GitHub team")
+			Expect(ghClient.DeleteTeamById(ctx, ghTeam.Organization.GetID(), ghTeam.GetID())).To(Succeed(), "this may change if BeforeEach is modified")
+
+			By("Scheduling the resource for deletion")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+			// manually add finalizer
+			controllerutil.AddFinalizer(resource, teamFinalizerName)
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
 			By("Deleting the resource")
-			resource := &githubv1alpha1.Team{}
-			err = k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
 				GracePeriodSeconds: &deletionGracePeriod,
 			})).To(Succeed())
@@ -438,10 +417,48 @@ var _ = Describe("Team Controller", func() {
 				GitHubClient:             ghClient,
 				DeleteOnResourceDeletion: true,
 			}
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should delete a Team resource without deleting the GitHub team", func() {
+			// when DeleteOnResourceDeletion isn't enabled
+			resource := &githubv1alpha1.Team{}
+
+			By("Fetching the current resource")
+			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+
+			By("Associating the Team resource with the GitHub team")
+			controllerReconciler := &TeamReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				GitHubClient: ghClient,
+			}
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// don't add the finalizer manually since it's only added to the resource when DeleteOnResourceDeletion is enabled
+			// IF THIS BEHAVIOR CHANGES, THIS TEST NEEDS TO BE UPDATED
+
+			By("Deleting the resource")
+			Expect(k8sClient.Delete(ctx, resource, &client.DeleteOptions{
+				GracePeriodSeconds: &deletionGracePeriod,
+			})).To(Succeed())
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking the GitHub team still exists")
+			_, err = ghClient.GetTeamByNodeId(ctx, ghTeam.GetNodeID())
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Cleaning up the GitHub team")
+			Expect(ghClient.DeleteTeamById(ctx, ghTeam.GetOrganization().GetID(), ghTeam.GetID())).To(Succeed())
 		})
 	})
 })

@@ -39,15 +39,16 @@ var (
 type RepositoryRequester interface {
 	RepositoryGetter
 
-	UpdateRepositoryBySlug(ctx context.Context, owner, name string, update *github.Repository) (*github.Repository, error)
+	UpdateRepositoryByName(ctx context.Context, owner, name string, update *github.Repository) (*github.Repository, error)
 	CreateRepository(ctx context.Context, org string, create *github.Repository) (*github.Repository, error)
 	CreateRepositoryFromTemplate(ctx context.Context, templateOwner string, templateRepository string, req *github.TemplateRepoRequest) (*github.Repository, error)
-	DeleteRepositoryBySlug(ctx context.Context, owner, name string) error
+	DeleteRepositoryByName(ctx context.Context, owner, name string) error
 	UpdateRepositoryTopics(ctx context.Context, owner string, repo string, topics []string) ([]string, error)
 }
 
 type RepositoryGetter interface {
-	GetRepositoryBySlug(ctx context.Context, owner string, name string) (*github.Repository, error)
+	GetRepositoryByName(ctx context.Context, owner string, name string) (*github.Repository, error)
+	GetRepositoryByNodeId(ctx context.Context, nodeId string) (*github.Repository, error)
 }
 
 // RepositoryReconciler reconciles a Repository object
@@ -75,12 +76,10 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	log := log.FromContext(ctx)
 
 	if r.GitHubClient == nil {
-		err := fmt.Errorf("nil GitHub client")
-		log.Error(err, "reconciler GitHub client is nil")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("nil GitHub client")
 	}
 
-	// fetch repository resource
+	// fetch resource
 	repo := &githubv1alpha1.Repository{}
 	if err := r.Get(ctx, req.NamespacedName, repo); err != nil {
 		log.Error(err, "error fetching Repository resource")
@@ -89,44 +88,34 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	var observed *github.Repository
 	// try to fetch external resource
-	if repo.Status.OwnerLogin != nil && repo.Status.Name != nil {
-		log.Info("getting repository", "slug", *repo.Status.Name)
-		ghTeam, err := r.GitHubClient.GetRepositoryBySlug(ctx, *repo.Status.OwnerLogin, *repo.Status.Name)
+	if repo.Status.NodeId != nil {
+		ghTeam, err := r.GitHubClient.GetRepositoryByNodeId(ctx, *repo.Status.NodeId)
 		if _, ok := err.(*gh.RepositoryNotFoundError); ok {
 			log.Info(err.Error())
 		} else if err != nil {
-			log.Error(err, "unable to get repository")
+			log.Error(err, "error fetching GitHub repository")
+			return ctrl.Result{}, err
 		}
 		observed = ghTeam
 	} else {
-		// TODO: name not necessarily the same as slug - need to convert
-		log.Info("getting repository", "slug", repo.Spec.Name)
-		// TODO: owner not necessarily the same as owner login - need to convert
-		ghRepo, err := r.GitHubClient.GetRepositoryBySlug(ctx, repo.Spec.Owner, repo.Spec.Name)
-		if _, ok := err.(*gh.TeamNotFoundError); ok {
+		ghRepo, err := r.GitHubClient.GetRepositoryByName(ctx, repo.Spec.Owner, repo.Spec.Name)
+		if _, ok := err.(*gh.RepositoryNotFoundError); ok {
 			log.Info(err.Error())
 		} else if err != nil {
-			log.Error(err, "unable to get repository")
+			log.Error(err, "error fetching GitHub repository")
+			return ctrl.Result{}, err
 		}
 		observed = ghRepo
 	}
 
-	// if repository does't exist, check if scheduled for deletion
-	if observed == nil {
-		// if scheduled for deletion
-		if !repo.ObjectMeta.DeletionTimestamp.IsZero() {
-			// do nothing and return since the external resource doesn't exist
-			return ctrl.Result{}, nil
-		} else {
-			// otherwise create the external resource
-			log.Info("creating repository", "name", repo.Spec.Name)
-			ghRepo, err := r.createRepository(ctx, repo)
-			if err != nil {
-				log.Error(err, "error creating repository", "name", repo.Spec.Name)
-				return ctrl.Result{}, err
-			}
-			observed = ghRepo
+	// if external resource does't exist and we aren't deleting the resource, create external resource
+	if observed == nil && repo.ObjectMeta.DeletionTimestamp.IsZero() {
+		ghTeam, err := r.createRepository(ctx, repo)
+		if err != nil {
+			log.Error(err, "error creating GitHub repository")
+			return ctrl.Result{}, err
 		}
+		observed = ghTeam
 	}
 
 	// handle finalizer
@@ -141,8 +130,7 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 		} else {
 			// being deleted
-			log.Info("deleting repository", "name", repo.Status.Name)
-			if repo.Status.LastUpdateTimestamp != nil {
+			if repo.Status.NodeId != nil {
 				// if we have never resolved this resource before, don't
 				// touch external state
 				if err := r.deleteRepository(ctx, repo); err != nil {
@@ -160,7 +148,7 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	// update repository
+	// update external resource
 	err := r.updateRepository(ctx, repo, observed)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -177,8 +165,8 @@ func (r *RepositoryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *RepositoryReconciler) createRepository(ctx context.Context, repo *githubv1alpha1.Repository) (*github.Repository, error) {
-	if repo.Spec.TemplateRepository != nil && repo.Spec.TemplateRepositoryOwner != nil {
-		repository, err := r.GitHubClient.CreateRepositoryFromTemplate(ctx, *repo.Spec.TemplateRepositoryOwner, *repo.Spec.TemplateRepository, &github.TemplateRepoRequest{
+	if repo.Spec.TemplateRepository != nil && repo.Spec.TemplateOwner != nil {
+		repository, err := r.GitHubClient.CreateRepositoryFromTemplate(ctx, *repo.Spec.TemplateOwner, *repo.Spec.TemplateRepository, &github.TemplateRepoRequest{
 			Name:               github.String(repo.Spec.Name),
 			Owner:              github.String(repo.Spec.Owner),
 			Description:        repo.Spec.Description,
@@ -285,27 +273,27 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		needsUpdate = true
 	}
 	// SquashMergeCommitTitle
-	if ptrNonNilAndNotEqualTo(repo.Spec.SquashMergeCommitTitle, ghRepo.GetSquashMergeCommitTitle()) {
+	if ptrNonNilAndNotEqualTo(repo.Spec.SquashMergeCommitTitle, (githubv1alpha1.SquashMergeCommitTitle)(ghRepo.GetSquashMergeCommitTitle())) {
 		log.Info("repository SquashMergeCommitTitle update", "from", ghRepo.GetSquashMergeCommitTitle(), "to", repo.Spec.SquashMergeCommitTitle)
-		updateRepo.SquashMergeCommitTitle = repo.Spec.SquashMergeCommitTitle
+		updateRepo.SquashMergeCommitTitle = (*string)(repo.Spec.SquashMergeCommitTitle)
 		needsUpdate = true
 	}
 	// SquashMergeCommitMessage
-	if ptrNonNilAndNotEqualTo(repo.Spec.SquashMergeCommitMessage, ghRepo.GetSquashMergeCommitMessage()) {
+	if ptrNonNilAndNotEqualTo(repo.Spec.SquashMergeCommitMessage, (githubv1alpha1.SquashMergeCommitMessage)(ghRepo.GetSquashMergeCommitMessage())) {
 		log.Info("repository SquashMergeCommitMessage update", "from", ghRepo.GetSquashMergeCommitMessage(), "to", repo.Spec.SquashMergeCommitMessage)
-		updateRepo.SquashMergeCommitMessage = repo.Spec.SquashMergeCommitMessage
+		updateRepo.SquashMergeCommitMessage = (*string)(repo.Spec.SquashMergeCommitMessage)
 		needsUpdate = true
 	}
 	// MergeCommitTitle
-	if ptrNonNilAndNotEqualTo(repo.Spec.MergeCommitTitle, ghRepo.GetMergeCommitTitle()) {
+	if ptrNonNilAndNotEqualTo(repo.Spec.MergeCommitTitle, (githubv1alpha1.MergeCommitTitle)(ghRepo.GetMergeCommitTitle())) {
 		log.Info("repository MergeCommitTitle update", "from", ghRepo.GetMergeCommitTitle(), "to", repo.Spec.MergeCommitTitle)
-		updateRepo.MergeCommitTitle = repo.Spec.MergeCommitTitle
+		updateRepo.MergeCommitTitle = (*string)(repo.Spec.MergeCommitTitle)
 		needsUpdate = true
 	}
 	// MergeCommitMessage
-	if ptrNonNilAndNotEqualTo(repo.Spec.MergeCommitMessage, ghRepo.GetMergeCommitMessage()) {
+	if ptrNonNilAndNotEqualTo(repo.Spec.MergeCommitMessage, (githubv1alpha1.MergeCommitMessage)(ghRepo.GetMergeCommitMessage())) {
 		log.Info("repository MergeCommitMessage update", "from", ghRepo.GetMergeCommitMessage(), "to", repo.Spec.MergeCommitMessage)
-		updateRepo.MergeCommitMessage = repo.Spec.MergeCommitMessage
+		updateRepo.MergeCommitMessage = (*string)(repo.Spec.MergeCommitMessage)
 		needsUpdate = true
 	}
 	// Topics
@@ -320,12 +308,6 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		updateRepo.Archived = repo.Spec.Archived
 		needsUpdate = true
 	}
-	// Disabled
-	if ptrNonNilAndNotEqualTo(repo.Spec.Disabled, ghRepo.GetDisabled()) {
-		log.Info("repository Disabled update", "from", ghRepo.GetDisabled(), "to", repo.Spec.Disabled)
-		updateRepo.Disabled = repo.Spec.Disabled
-		needsUpdate = true
-	}
 	// HasIssues
 	if ptrNonNilAndNotEqualTo(repo.Spec.HasIssues, ghRepo.GetHasIssues()) {
 		log.Info("repository HasIssues update", "from", ghRepo.GetHasIssues(), "to", repo.Spec.HasIssues)
@@ -336,12 +318,6 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 	if ptrNonNilAndNotEqualTo(repo.Spec.HasWiki, ghRepo.GetHasWiki()) {
 		log.Info("repository HasWiki update", "from", ghRepo.GetHasWiki(), "to", repo.Spec.HasWiki)
 		updateRepo.HasWiki = repo.Spec.HasWiki
-		needsUpdate = true
-	}
-	// HasPages
-	if ptrNonNilAndNotEqualTo(repo.Spec.HasPages, ghRepo.GetHasPages()) {
-		log.Info("repository HasPages update", "from", ghRepo.GetHasPages(), "to", repo.Spec.HasPages)
-		updateRepo.HasPages = repo.Spec.HasPages
 		needsUpdate = true
 	}
 	// HasProjects
@@ -373,7 +349,7 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 	// TODO: more granular updates (allow just topic update)
 	if needsUpdate || needsTopicsUpdate || repo.Status.LastUpdateTimestamp == nil {
 		log.Info("updating repository", "name", ghRepo.GetName())
-		updated, err := r.GitHubClient.UpdateRepositoryBySlug(ctx, ghRepo.GetOwner().GetLogin(), ghRepo.GetName(), updateRepo)
+		updated, err := r.GitHubClient.UpdateRepositoryByName(ctx, ghRepo.GetOwner().GetLogin(), ghRepo.GetName(), updateRepo)
 		if err != nil {
 			log.Error(err, "error updating repository", "name", repo.Spec.Name)
 			return err
@@ -406,11 +382,11 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		}
 
 		templateRepository := ghRepo.GetTemplateRepository()
-		var templateRepositoryOwnerName string
+		var templateRepositoryOwnerLogin string
 		var templateRepositoryName string
 		var templateRepositoryId int64
 		if templateRepository != nil {
-			templateRepositoryOwnerName = templateRepository.Owner.GetName()
+			templateRepositoryOwnerLogin = templateRepository.Owner.GetName()
 			templateRepositoryName = templateRepository.GetName()
 			templateRepositoryId = templateRepository.GetID()
 		}
@@ -424,53 +400,46 @@ func (r *RepositoryReconciler) updateRepository(ctx context.Context, repo *githu
 		}
 
 		repo.Status = githubv1alpha1.RepositoryStatus{
-			LastUpdateTimestamp:         &now,
-			Id:                          ghRepo.ID,
-			NodeID:                      ghRepo.NodeID,
-			OwnerLogin:                  github.String(ownerLogin),
-			OwnerId:                     github.Int64(ownerId),
-			Name:                        ghRepo.Name,
-			FullName:                    ghRepo.FullName,
-			Description:                 ghRepo.Description,
-			Homepage:                    ghRepo.Homepage,
-			DefaultBranch:               ghRepo.DefaultBranch,
-			CreatedAt:                   (*v1.Time)(ghRepo.CreatedAt),
-			PushedAt:                    (*v1.Time)(ghRepo.PushedAt),
-			UpdatedAt:                   (*v1.Time)(ghRepo.UpdatedAt),
-			Language:                    ghRepo.Language,
-			Fork:                        ghRepo.Fork,
-			Size:                        ghRepo.Size,
-			ParentName:                  github.String(parentName),
-			ParentId:                    github.Int64(parentId),
-			TemplateRepositoryOwnerName: github.String(templateRepositoryOwnerName),
-			TemplateRepositoryName:      github.String(templateRepositoryName),
-			TemplateRepositoryId:        github.Int64(templateRepositoryId),
-			OrganizationLogin:           github.String(organizationLogin),
-			OrganizationId:              github.Int64(organizationId),
-			AllowRebaseMerge:            ghRepo.AllowRebaseMerge,
-			AllowUpdateBranch:           ghRepo.AllowUpdateBranch,
-			AllowSquashMerge:            ghRepo.AllowSquashMerge,
-			AllowMergeCommit:            ghRepo.AllowMergeCommit,
-			AllowAutoMerge:              ghRepo.AllowAutoMerge,
-			AllowForking:                ghRepo.AllowForking,
-			WebCommitSignoffRequired:    ghRepo.WebCommitSignoffRequired,
-			DeleteBranchOnMerge:         ghRepo.DeleteBranchOnMerge,
-			SquashMergeCommitTitle:      ghRepo.SquashMergeCommitTitle,
-			SquashMergeCommitMessage:    ghRepo.SquashMergeCommitMessage,
-			MergeCommitTitle:            ghRepo.MergeCommitTitle,
-			MergeCommitMessage:          ghRepo.MergeCommitMessage,
-			Topics:                      ghRepo.Topics,
-			Archived:                    ghRepo.Archived,
-			Disabled:                    ghRepo.Disabled,
-			HasIssues:                   ghRepo.HasIssues,
-			HasWiki:                     ghRepo.HasWiki,
-			HasPages:                    ghRepo.HasPages,
-			HasProjects:                 ghRepo.HasProjects,
-			HasDownloads:                ghRepo.HasDownloads,
-			HasDiscussions:              ghRepo.HasDiscussions,
-			IsTemplate:                  ghRepo.IsTemplate,
-			LicenseTemplate:             ghRepo.LicenseTemplate,
-			Visibility:                  ghRepo.Visibility,
+			LastUpdateTimestamp:          &now,
+			Id:                           ghRepo.ID,
+			NodeId:                       ghRepo.NodeID,
+			OwnerLogin:                   github.String(ownerLogin),
+			OwnerNodeId:                  github.Int64(ownerId),
+			Name:                         ghRepo.Name,
+			FullName:                     ghRepo.FullName,
+			Description:                  ghRepo.Description,
+			Homepage:                     ghRepo.Homepage,
+			DefaultBranch:                ghRepo.DefaultBranch,
+			CreatedAt:                    (*v1.Time)(ghRepo.CreatedAt),
+			PushedAt:                     (*v1.Time)(ghRepo.PushedAt),
+			UpdatedAt:                    (*v1.Time)(ghRepo.UpdatedAt),
+			ParentName:                   github.String(parentName),
+			ParentId:                     github.Int64(parentId),
+			TemplateRepositoryOwnerLogin: github.String(templateRepositoryOwnerLogin),
+			TemplateRepositoryName:       github.String(templateRepositoryName),
+			TemplateRepositoryId:         github.Int64(templateRepositoryId),
+			OrganizationLogin:            github.String(organizationLogin),
+			OrganizationId:               github.Int64(organizationId),
+			AllowRebaseMerge:             ghRepo.AllowRebaseMerge,
+			AllowUpdateBranch:            ghRepo.AllowUpdateBranch,
+			AllowSquashMerge:             ghRepo.AllowSquashMerge,
+			AllowMergeCommit:             ghRepo.AllowMergeCommit,
+			AllowAutoMerge:               ghRepo.AllowAutoMerge,
+			AllowForking:                 ghRepo.AllowForking,
+			WebCommitSignoffRequired:     ghRepo.WebCommitSignoffRequired,
+			DeleteBranchOnMerge:          ghRepo.DeleteBranchOnMerge,
+			SquashMergeCommitTitle:       (*githubv1alpha1.SquashMergeCommitTitle)(ghRepo.SquashMergeCommitTitle),
+			SquashMergeCommitMessage:     (*githubv1alpha1.SquashMergeCommitMessage)(ghRepo.SquashMergeCommitMessage),
+			MergeCommitTitle:             (*githubv1alpha1.MergeCommitTitle)(ghRepo.MergeCommitTitle),
+			MergeCommitMessage:           (*githubv1alpha1.MergeCommitMessage)(ghRepo.MergeCommitMessage),
+			Topics:                       ghRepo.Topics,
+			Archived:                     ghRepo.Archived,
+			HasIssues:                    ghRepo.HasIssues,
+			HasWiki:                      ghRepo.HasWiki,
+			HasProjects:                  ghRepo.HasProjects,
+			HasDownloads:                 ghRepo.HasDownloads,
+			HasDiscussions:               ghRepo.HasDiscussions,
+			Visibility:                   ghRepo.Visibility,
 		}
 
 		// update status
@@ -487,7 +456,7 @@ func (r *RepositoryReconciler) deleteRepository(ctx context.Context, repo *githu
 	} else if repo.Status.Name == nil {
 		return fmt.Errorf("repo Name is nil")
 	}
-	return r.GitHubClient.DeleteRepositoryBySlug(ctx, *repo.Status.OwnerLogin, *repo.Status.Name)
+	return r.GitHubClient.DeleteRepositoryByName(ctx, *repo.Status.OwnerLogin, *repo.Status.Name)
 }
 
 func repositoryToGitHubRepository(repository *githubv1alpha1.Repository) *github.Repository {
@@ -504,16 +473,14 @@ func repositoryToGitHubRepository(repository *githubv1alpha1.Repository) *github
 		AllowForking:             repository.Spec.AllowForking,
 		WebCommitSignoffRequired: repository.Spec.WebCommitSignoffRequired,
 		DeleteBranchOnMerge:      repository.Spec.DeleteBranchOnMerge,
-		SquashMergeCommitTitle:   repository.Spec.SquashMergeCommitTitle,
-		SquashMergeCommitMessage: repository.Spec.SquashMergeCommitMessage,
-		MergeCommitTitle:         repository.Spec.MergeCommitTitle,
-		MergeCommitMessage:       repository.Spec.MergeCommitMessage,
+		SquashMergeCommitTitle:   (*string)(repository.Spec.SquashMergeCommitTitle),
+		SquashMergeCommitMessage: (*string)(repository.Spec.SquashMergeCommitMessage),
+		MergeCommitTitle:         (*string)(repository.Spec.MergeCommitTitle),
+		MergeCommitMessage:       (*string)(repository.Spec.MergeCommitMessage),
 		Topics:                   repository.Spec.Topics,
 		Archived:                 repository.Spec.Archived,
-		Disabled:                 repository.Spec.Disabled,
 		HasIssues:                repository.Spec.HasIssues,
 		HasWiki:                  repository.Spec.HasWiki,
-		HasPages:                 repository.Spec.HasPages,
 		HasProjects:              repository.Spec.HasProjects,
 		HasDownloads:             repository.Spec.HasDownloads,
 		HasDiscussions:           repository.Spec.HasDiscussions,

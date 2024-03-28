@@ -9,7 +9,6 @@ import (
 
 // Branch Protection
 
-// TODO: consistent API - either direct access or getters
 type BranchProtection struct {
 	AllowsDeletions             bool
 	AllowsForcePushes           bool

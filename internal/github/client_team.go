@@ -22,17 +22,44 @@ func (c *Client) GetTeamBySlug(ctx context.Context, org, slug string) (*github.T
 	return team, nil
 }
 
-func (c *Client) GetTeamById(ctx context.Context, org, teamId int64) (*github.Team, error) {
-	team, resp, err := c.rest.Teams.GetTeamByID(ctx, org, teamId)
+func (c *Client) GetTeamById(ctx context.Context, orgId, teamId int64) (*github.Team, error) {
+	team, resp, err := c.rest.Teams.GetTeamByID(ctx, orgId, teamId)
 	if resp.StatusCode == 404 {
 		return nil, &TeamNotFoundError{
-			OrgId:  github.Int64(org),
+			OrgId:  github.Int64(orgId),
 			TeamId: github.Int64(teamId),
 		}
 	} else if err != nil {
 		return nil, fmt.Errorf("getting GitHub team: %w", err)
 	}
 	return team, nil
+}
+
+func (c *Client) GetTeamByNodeId(ctx context.Context, nodeId string) (*github.Team, error) {
+	// TOOD: this is inefficient since it takes two API calls.
+	// This is done this way for the moment since it lets us update an existing resource in event of naming changes.
+	// In the future, we should probably move to an explicit internal data structure instead
+	// of relying on a library and define conversions.
+	var q struct {
+		Node struct {
+			Team struct {
+				DatabaseId   int64
+				Organization struct {
+					DatabaseId int64
+				}
+			} `graphql:"... on Team"`
+		} `graphql:"node(id: $nodeId)"`
+	}
+
+	variables := map[string]interface{}{
+		"nodeId": nodeId,
+	}
+
+	err := c.graphql.Query(ctx, &q, variables)
+	if err != nil {
+		return nil, err
+	}
+	return c.GetTeamById(ctx, q.Node.Team.Organization.DatabaseId, q.Node.Team.DatabaseId)
 }
 
 func (c *Client) CreateTeam(ctx context.Context, org string, newTeam github.NewTeam) (*github.Team, error) {

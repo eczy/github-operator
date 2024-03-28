@@ -70,14 +70,11 @@ type BranchProtectionReconciler struct {
 func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	// TODO: move this check elsewhere
 	if r.GitHubClient == nil {
-		err := fmt.Errorf("nil GitHub client")
-		log.Error(err, "reconciler GitHub client is nil")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("nil GitHub client")
 	}
 
-	// fetch team resource
+	// fetch resource
 	bp := &githubv1alpha1.BranchProtection{}
 	if err := r.Get(ctx, req.NamespacedName, bp); err != nil {
 		log.Error(err, "error fetching BranchProtection resource")
@@ -86,16 +83,14 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	var observed *gh.BranchProtection
 	// try to fetch external resource
-	if bp.Status.Id != nil {
-		log.Info("getting branch protection", "id", bp.Status.Id)
-		ghBp, err := r.GitHubClient.GetBranchProtection(ctx, *bp.Status.Id)
+	if bp.Status.NodeId != nil {
+		ghBp, err := r.GitHubClient.GetBranchProtection(ctx, *bp.Status.NodeId)
 		if err != nil {
 			// TODO: determine if the error is a "not found" error vs another type of error
 			log.Info(err.Error())
 		}
 		observed = ghBp
 	} else {
-		log.Info("getting branch protection", "repository", bp.Spec.RepositoryName, "owner", bp.Spec.RepositoryOwner, "pattern", bp.Spec.Pattern)
 		ghBp, err := r.GitHubClient.GetBranchProtectionByOwnerRepoPattern(ctx, bp.Spec.RepositoryOwner, bp.Spec.RepositoryName, bp.Spec.Pattern)
 		if err != nil {
 			// TODO: determine if the error is a "not found" error vs another type of error
@@ -104,22 +99,14 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		observed = ghBp
 	}
 
-	// if branch protection does't exist, check if scheduled for deletion
-	if observed == nil {
-		// if scheduled for deletion
-		if !bp.ObjectMeta.DeletionTimestamp.IsZero() {
-			// do nothing and return since the external resource doesn't exist
-			return ctrl.Result{}, nil
-		} else {
-			// otherwise create the external resource
-			log.Info("creating branch protection", "repository", bp.Spec.RepositoryName, "owner", bp.Spec.RepositoryOwner, "pattern", bp.Spec.Pattern)
-			ghBp, err := r.createBranchProtection(ctx, bp)
-			if err != nil {
-				log.Error(err, "unable to create branch protection", "pattern", bp.Spec.Pattern)
-				return ctrl.Result{}, err
-			}
-			observed = ghBp
+	// if external resource does't exist and we aren't deleting the resource, create external resource
+	if observed == nil && bp.ObjectMeta.DeletionTimestamp.IsZero() {
+		ghBp, err := r.createBranchProtection(ctx, bp)
+		if err != nil {
+			log.Error(err, "error creating GitHub branch protection")
+			return ctrl.Result{}, err
 		}
+		observed = ghBp
 	}
 
 	// handle finalizer
@@ -134,12 +121,11 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			}
 		} else {
 			// being deleted
-			log.Info("deleting branch protection", "node_id", bp.Status.Id)
 			if bp.Status.LastUpdateTimestamp != nil {
 				// if we have never resolved this resource before, don't
 				// touch external state
 				if err := r.deleteBranchProtection(ctx, bp); err != nil {
-					log.Error(err, "unable to delete branch protection")
+					log.Error(err, "error deleting branch protection")
 					return ctrl.Result{}, err
 				}
 			}
@@ -153,7 +139,7 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		}
 	}
 
-	// update team
+	// update external resource
 	err := r.updateBranchProtection(ctx, bp, observed)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -524,8 +510,8 @@ func (r *BranchProtectionReconciler) updateBranchProtection(ctx context.Context,
 		reviewCount := int(updated.RequiredApprovingReviewCount)
 		bp.Status = githubv1alpha1.BranchProtectionStatus{
 			LastUpdateTimestamp:            &now,
-			Id:                             &updated.Id,
-			RepositoryId:                   &updated.Repository.Id,
+			NodeId:                         &updated.Id,
+			RepositoryNodeId:               &updated.Repository.Id,
 			RepositoryOwner:                &ownerLogin,
 			RepositoryName:                 &updated.Repository.Name,
 			Pattern:                        &updated.Pattern,
@@ -574,22 +560,22 @@ func (r *BranchProtectionReconciler) updateBranchProtection(ctx context.Context,
 }
 
 func (r *BranchProtectionReconciler) deleteBranchProtection(ctx context.Context, bp *githubv1alpha1.BranchProtection) error {
-	if bp.Status.Id == nil {
+	if bp.Status.NodeId == nil {
 		return fmt.Errorf("branch protection NodeID is nil")
 	}
 
 	return r.GitHubClient.DeleteBranchProtection(ctx, &githubv4.DeleteBranchProtectionRuleInput{
-		BranchProtectionRuleID: bp.Status.Id,
+		BranchProtectionRuleID: bp.Status.NodeId,
 	})
 }
 
 func (r *BranchProtectionReconciler) branchProtectionToCreateInput(ctx context.Context, bp *githubv1alpha1.BranchProtection) (*githubv4.CreateBranchProtectionRuleInput, error) {
 	var id githubv4.ID
-	if bp.Status.RepositoryId != nil {
-		id = bp.Status.RepositoryId
+	if bp.Status.RepositoryNodeId != nil {
+		id = bp.Status.RepositoryNodeId
 	} else {
 		// return nil, fmt.Errorf("branch protection Status.RepositoryId is nil")
-		repo, err := r.GitHubClient.GetRepositoryBySlug(ctx, bp.Spec.RepositoryOwner, bp.Spec.RepositoryName)
+		repo, err := r.GitHubClient.GetRepositoryByName(ctx, bp.Spec.RepositoryOwner, bp.Spec.RepositoryName)
 		if err != nil {
 			// TODO: custom error type
 			return nil, fmt.Errorf("no repository '%s' found for owner '%s'", bp.Spec.RepositoryName, bp.Spec.RepositoryOwner)
@@ -597,43 +583,11 @@ func (r *BranchProtectionReconciler) branchProtectionToCreateInput(ctx context.C
 		id = repo.GetNodeID()
 	}
 
-	// var requiredApprovingReviewCount *githubv4.Int
-	// if bp.Spec.RequiredApprovingReviewCount != nil {
-	// 	val := (githubv4.Int)(*bp.Spec.RequiredApprovingReviewCount)
-	// 	requiredApprovingReviewCount = &val
-	// }
-
 	// rely on create then update
 	// slightly less efficient since it takes 2 api calls, but will require less work for now
 	// TODO: create with all fields populated to avoid 2 api calls
 	return &githubv4.CreateBranchProtectionRuleInput{
 		RepositoryID: id,
 		Pattern:      githubv4.String(bp.Spec.Pattern),
-		// 	RequiresApprovingReviews:       (*githubv4.Boolean)(bp.Spec.RequiresApprovingReviews),
-		// 	RequiredApprovingReviewCount:   requiredApprovingReviewCount,
-		// 	RequiresCommitSignatures:       (*githubv4.Boolean)(bp.Spec.RequiresCommitSignatures),
-		// 	RequiresLinearHistory:          (*githubv4.Boolean)(bp.Spec.RequiresLinearHistory),
-		// 	BlocksCreations:                (*githubv4.Boolean)(bp.Spec.BlocksCreations),
-		// 	AllowsForcePushes:              (*githubv4.Boolean)(bp.Spec.AllowsForcePushes),
-		// 	AllowsDeletions:                (*githubv4.Boolean)(bp.Spec.AllowsDeletions),
-		// 	IsAdminEnforced:                (*githubv4.Boolean)(bp.Spec.IsAdminEnforced),
-		// 	RequiresStatusChecks:           (*githubv4.Boolean)(bp.Spec.RequiresStatusChecks),
-		// 	RequiresStrictStatusChecks:     (*githubv4.Boolean)(bp.Spec.RequiresStatusChecks),
-		// 	RequiresCodeOwnerReviews:       (*githubv4.Boolean)(bp.Spec.RequiresCodeOwnerReviews),
-		// 	DismissesStaleReviews:          (*githubv4.Boolean)(bp.Spec.DismissesStaleReviews),
-		// 	RestrictsReviewDismissals:      (*githubv4.Boolean)(bp.Spec.RestrictsReviewDismissals),
-		// 	ReviewDismissalActorIDs:        &[]githubv4.ID{}, // TODO
-		// 	BypassPullRequestActorIDs:      &[]githubv4.ID{}, // TODO
-		// 	BypassForcePushActorIDs:        &[]githubv4.ID{}, // TODO
-		// 	RestrictsPushes:                (*githubv4.Boolean)(bp.Spec.RestrictsPushes),
-		// 	PushActorIDs:                   &[]githubv4.ID{},                       // TODO
-		// 	RequiredStatusCheckContexts:    &[]githubv4.String{},                   // TODO
-		// 	RequiredStatusChecks:           &[]githubv4.RequiredStatusCheckInput{}, // TODO
-		// 	RequiresDeployments:            (*githubv4.Boolean)(bp.Spec.RequiresDeployments),
-		// 	RequiredDeploymentEnvironments: &[]githubv4.String{}, // TODO
-		// 	RequiresConversationResolution: (*githubv4.Boolean)(bp.Spec.RequiresConversationResolution),
-		// 	RequireLastPushApproval:        (*githubv4.Boolean)(bp.Spec.RequireLastPushApproval),
-		// 	LockBranch:                     (*githubv4.Boolean)(bp.Spec.LockBranch),
-		// 	LockAllowsFetchAndMerge:        (*githubv4.Boolean)(bp.Spec.LockAllowsFetchAndMerge),
 	}, nil
 }
