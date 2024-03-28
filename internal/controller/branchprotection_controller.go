@@ -99,21 +99,14 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		observed = ghBp
 	}
 
-	// if external resource does't exist, check if scheduled for deletion
-	if observed == nil {
-		// if scheduled for deletion
-		if !bp.ObjectMeta.DeletionTimestamp.IsZero() {
-			// do nothing and return since the external resource doesn't exist
-			return ctrl.Result{}, nil
-		} else {
-			// otherwise create the external resource
-			ghBp, err := r.createBranchProtection(ctx, bp)
-			if err != nil {
-				log.Error(err, "error creating GitHub branch protection", "pattern", bp.Spec.Pattern)
-				return ctrl.Result{}, err
-			}
-			observed = ghBp
+	// if external resource does't exist and we aren't deleting the resource, create external resource
+	if observed == nil && bp.ObjectMeta.DeletionTimestamp.IsZero() {
+		ghBp, err := r.createBranchProtection(ctx, bp)
+		if err != nil {
+			log.Error(err, "error creating GitHub branch protection")
+			return ctrl.Result{}, err
 		}
+		observed = ghBp
 	}
 
 	// handle finalizer
