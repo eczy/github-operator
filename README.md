@@ -1,8 +1,19 @@
 # github-operator
-// TODO(user): Add simple overview of use/purpose
+GitHub Operator is a [Kubernetes operator] built to manage GitHub resources in a declarative manner.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+By representing GitHub resources as Kubernetes resources, GitHub Operator lets users leverage existing Kubernetes resource management tools like [Kustomize] to easily manage the GitHub resources. It also leverages the Kubernetes reconciliation loop to protect against state drift.
+
+Supported GitHub resources:
+
+| Resource               | Create | Update | Delete |
+| ---------------------- | ------ | ------ | ------ |
+| Repository             | ✅      | ✅      | ✅      |
+| Branch Protection Rule | ✅      | ✅      | ✅      |
+| Team                   | ✅      | ✅      | ✅      |
+| Organization           | ❌      | ✅      | ❌      |
+
+If you would like a new resource to be supported, please open an issue.
 
 ## Getting Started
 
@@ -98,7 +109,7 @@ More information can be found via the [Kubebuilder Documentation](https://book.k
 
 ## License
 
-Copyright 2024.
+Copyright 2024 Evan Czyzycki.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -112,3 +123,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+
+[Kubernetes operator]: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
+[Kustomize]: https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/
