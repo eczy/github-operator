@@ -43,7 +43,7 @@ type OrganizationSpec struct {
 
 	// Billing email address. This address is not publicized.
 	// +optional
-	BillingEmail *string `json:"billing_email,omitempty"`
+	BillingEmail *string `json:"billingEmail,omitempty"`
 
 	//+kubebuilder:validation:MinLength=1
 
@@ -57,7 +57,7 @@ type OrganizationSpec struct {
 
 	// The Twitter username of the company.
 	// +optional
-	TwitterUsername *string `json:"twitter_username,omitempty"`
+	TwitterUsername *string `json:"twitterUsername,omitempty"`
 
 	// The location.
 	// +optional
@@ -69,79 +69,79 @@ type OrganizationSpec struct {
 
 	// Whether an organization can use organization projects.
 	// +optional
-	HasOrganizationProjects *bool `json:"has_organization_projects,omitempty"`
+	HasOrganizationProjects *bool `json:"hasOrganizationProjects,omitempty"`
 
 	// Whether repositories that belong to the organization can use repository projects.
 	// +optional
-	HasRepositoryProjects *bool `json:"has_repository_projects,omitempty"`
+	HasRepositoryProjects *bool `json:"hasRepositoryProjects,omitempty"`
 
 	// Default permission level members have for organization repositories.
 	// Can be one of: read, write, admin, none
 	// +optional
-	DefaultRepositoryPermission *DefaultRepositoryPermission `json:"default_repository_permission,omitempty"`
+	DefaultRepositoryPermission *DefaultRepositoryPermission `json:"defaultRepositoryPermission,omitempty"`
 
 	// Whether of non-admin organization members can create repositories.
 	// +optional
-	MembersCanCreateRepositories *bool `json:"members_can_create_repositories,omitempty"`
+	MembersCanCreateRepositories *bool `json:"membersCanCreateRepositories,omitempty"`
 
 	// Whether organization members can create internal repositories, which are visible to all enterprise members. You can only allow members to create internal repositories if your organization is associated with an enterprise account using GitHub Enterprise Cloud or GitHub Enterprise Server 2.20+.
 	// +optional
-	MembersCanCreateInternalRepositories *bool `json:"members_can_create_internal_repositories,omitempty"`
+	MembersCanCreateInternalRepositories *bool `json:"membersCanCreateInternalRepositories,omitempty"`
 
 	// Whether organization members can create private repositories, which are visible to organization members with permission.
 	// +optional
-	MembersCanCreatePrivateRepositories *bool `json:"members_can_create_private_repositories,omitempty"`
+	MembersCanCreatePrivateRepositories *bool `json:"membersCanCreatePrivateRepositories,omitempty"`
 
 	// Whether organization members can create public repositories, which are visible to anyone.
 	// +optional
-	MembersCanCreatePublicRepositories *bool `json:"members_can_create_public_repositories,omitempty"`
+	MembersCanCreatePublicRepositories *bool `json:"membersCanCreatePublicRepositories,omitempty"`
 
 	// Whether organization members can create GitHub Pages sites.
 	// +optional
-	MembersCanCreatePages *bool `json:"members_can_create_pages,omitempty"`
+	MembersCanCreatePages *bool `json:"membersCanCreatePages,omitempty"`
 
 	// Whether organization members can create public GitHub Pages sites.
 	// +optional
-	MembersCanCreatePublicPages *bool `json:"members_can_create_public_pages,omitempty"`
+	MembersCanCreatePublicPages *bool `json:"membersCanCreatePublicPages,omitempty"`
 
 	// Whether organization members can create private GitHub Pages sites.
 	// +optional
-	MembersCanCreatePrivatePages *bool `json:"members_can_create_private_pages,omitempty"`
+	MembersCanCreatePrivatePages *bool `json:"membersCanCreatePrivatePages,omitempty"`
 
 	// Whether organization members can create private GitHub Pages sites.
 	// +optional
-	MembersCanForkPrivateRepositories *bool `json:"members_can_fork_private_repositories,omitempty"`
+	MembersCanForkPrivateRepositories *bool `json:"membersCanForkPrivateRepositories,omitempty"`
 
 	// Whether contributors to organization repositories are required to sign off on commits they make through GitHub's web interface.
 	// +optional
-	WebCommitSignoffRequired *bool `json:"web_commit_signoff_required,omitempty"`
+	WebCommitSignoffRequired *bool `json:"webCommitSignoffRequired,omitempty"`
 
 	// +optional
 	Blog *string `json:"blog,omitempty"`
 
 	// Whether GitHub Advanced Security is automatically enabled for new repositories.
 	// +optional
-	AdvancedSecurityEnabledForNewRepositories *bool `json:"advanced_security_enabled_for_new_repositories,omitempty"`
+	AdvancedSecurityEnabledForNewRepositories *bool `json:"advancedSecurityEnabledForNewRepositories,omitempty"`
 
 	// Whether Dependabot alerts is automatically enabled for new repositories.
 	// +optional
-	DependabotAlertsEnabledForNewRepositories *bool `json:"dependabot_alerts_enabled_for_new_repositories,omitempty"`
+	DependabotAlertsEnabledForNewRepositories *bool `json:"dependabotAlertsEnabledForNewRepositories,omitempty"`
 
 	// Whether Dependabot security updates is automatically enabled for new repositories.
 	// +optional
-	DependabotSecurityUpdatesEnabledForNewRepositories *bool `json:"dependabot_security_updates_enabled_for_new_repositories,omitempty"`
+	DependabotSecurityUpdatesEnabledForNewRepositories *bool `json:"dependabotSecurityUpdatesEnabledForNewRepositories,omitempty"`
 
 	// Whether dependency graph is automatically enabled for new repositories.
 	// +optional
-	DependencyGraphEnabledForNewRepositories *bool `json:"dependency_graph_enabled_for_new_repositories,omitempty"`
+	DependencyGraphEnabledForNewRepositories *bool `json:"dependencyGraphEnabledForNewRepositories,omitempty"`
 
 	// Whether secret scanning is automatically enabled for new repositories.
 	// +optional
-	SecretScanningEnabledForNewRepositories *bool `json:"secret_scanning_enabled_for_new_repositories,omitempty"`
+	SecretScanningEnabledForNewRepositories *bool `json:"secretScanningEnabledForNewRepositories,omitempty"`
 
 	// Whether secret scanning push protection is automatically enabled for new repositories.
 	// +optional
-	SecretScanningPushProtectionEnabledForNewRepositories *bool `json:"secret_scanning_push_protection_enabled_for_new_repositories,omitempty"`
+	SecretScanningPushProtectionEnabledForNewRepositories *bool `json:"secretScanningPushProtectionEnabledForNewRepositories,omitempty"`
 }
 
 // OrganizationStatus defines the observed state of Organization
@@ -149,35 +149,35 @@ type OrganizationStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	Login               *string      `json:"login,omitempty"`
-	NodeId              *string      `json:"node_id,omitempty"`
-	LastUpdateTimestamp *metav1.Time `json:"last_update_timestamp,omitempty"`
+	NodeId              *string      `json:"nodeId,omitempty"`
+	LastUpdateTimestamp *metav1.Time `json:"lastUpdateTimestamp,omitempty"`
 
 	Name                                                  string                       `json:"name"`
-	BillingEmail                                          string                       `json:"billing_email,omitempty"`
+	BillingEmail                                          string                       `json:"billingEmail,omitempty"`
 	Company                                               string                       `json:"company,omitempty"`
 	Email                                                 string                       `json:"email"`
-	TwitterUsername                                       *string                      `json:"twitter_username,omitempty"`
+	TwitterUsername                                       *string                      `json:"twitterUsername,omitempty"`
 	Location                                              *string                      `json:"location,omitempty"`
 	Description                                           *string                      `json:"description,omitempty"`
-	HasOrganizationProjects                               *bool                        `json:"has_organization_projects,omitempty"`
-	HasRepositoryProjects                                 *bool                        `json:"has_repository_projects,omitempty"`
-	DefaultRepositoryPermission                           *DefaultRepositoryPermission `json:"default_repository_permission,omitempty"`
-	MembersCanCreateRepositories                          *bool                        `json:"members_can_create_repositories,omitempty"`
-	MembersCanCreateInternalRepositories                  *bool                        `json:"members_can_create_internal_repositories,omitempty"`
-	MembersCanCreatePrivateRepositories                   *bool                        `json:"members_can_create_private_repositories,omitempty"`
-	MembersCanCreatePublicRepositories                    *bool                        `json:"members_can_create_public_repositories,omitempty"`
-	MembersCanCreatePages                                 *bool                        `json:"members_can_create_pages,omitempty"`
-	MembersCanCreatePublicPages                           *bool                        `json:"members_can_create_public_pages,omitempty"`
-	MembersCanCreatePrivatePages                          *bool                        `json:"members_can_create_private_pages,omitempty"`
-	MembersCanForkPrivateRepositories                     *bool                        `json:"members_can_fork_private_repositories,omitempty"`
-	WebCommitSignoffRequired                              *bool                        `json:"web_commit_signoff_required,omitempty"`
+	HasOrganizationProjects                               *bool                        `json:"hasOrganizationProjects,omitempty"`
+	HasRepositoryProjects                                 *bool                        `json:"hasRepositoryProjects,omitempty"`
+	DefaultRepositoryPermission                           *DefaultRepositoryPermission `json:"defaultRepositoryPermission,omitempty"`
+	MembersCanCreateRepositories                          *bool                        `json:"membersCanCreateRepositories,omitempty"`
+	MembersCanCreateInternalRepositories                  *bool                        `json:"membersCanCreateInternalRepositories,omitempty"`
+	MembersCanCreatePrivateRepositories                   *bool                        `json:"membersCanCreatePrivateRepositories,omitempty"`
+	MembersCanCreatePublicRepositories                    *bool                        `json:"membersCanCreatePublicRepositories,omitempty"`
+	MembersCanCreatePages                                 *bool                        `json:"membersCanCreatePages,omitempty"`
+	MembersCanCreatePublicPages                           *bool                        `json:"membersCanCreatePublicPages,omitempty"`
+	MembersCanCreatePrivatePages                          *bool                        `json:"membersCanCreatePrivatePages,omitempty"`
+	MembersCanForkPrivateRepositories                     *bool                        `json:"membersCanForkPrivateRepositories,omitempty"`
+	WebCommitSignoffRequired                              *bool                        `json:"webCommitSignoffRequired,omitempty"`
 	Blog                                                  *string                      `json:"blog,omitempty"`
-	AdvancedSecurityEnabledForNewRepositories             *bool                        `json:"advanced_security_enabled_for_new_repositories,omitempty"`
-	DependabotAlertsEnabledForNewRepositories             *bool                        `json:"dependabot_alerts_enabled_for_new_repositories,omitempty"`
-	DependabotSecurityUpdatesEnabledForNewRepositories    *bool                        `json:"dependabot_security_updates_enabled_for_new_repositories,omitempty"`
-	DependencyGraphEnabledForNewRepositories              *bool                        `json:"dependency_graph_enabled_for_new_repositories,omitempty"`
-	SecretScanningEnabledForNewRepositories               *bool                        `json:"secret_scanning_enabled_for_new_repositories,omitempty"`
-	SecretScanningPushProtectionEnabledForNewRepositories *bool                        `json:"secret_scanning_push_protection_enabled_for_new_repositories,omitempty"`
+	AdvancedSecurityEnabledForNewRepositories             *bool                        `json:"advancedSecurityEnabledForNewRepositories,omitempty"`
+	DependabotAlertsEnabledForNewRepositories             *bool                        `json:"dependabotAlertsEnabledForNewRepositories,omitempty"`
+	DependabotSecurityUpdatesEnabledForNewRepositories    *bool                        `json:"dependabotSecurityUpdatesEnabledForNewRepositories,omitempty"`
+	DependencyGraphEnabledForNewRepositories              *bool                        `json:"dependencyFraphEnabledForNewRepositories,omitempty"`
+	SecretScanningEnabledForNewRepositories               *bool                        `json:"secretScanningEnabledForNewRepositories,omitempty"`
+	SecretScanningPushProtectionEnabledForNewRepositories *bool                        `json:"secretScanningPushProtectionEnabledForNewRepositories,omitempty"`
 }
 
 //+kubebuilder:object:root=true
