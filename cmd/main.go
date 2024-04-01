@@ -76,18 +76,30 @@ func main() {
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
-	flag.IntVar(&requeueInterval, "requeue-interval", 0, "Requeue interval for all custom resources managed by this Manager in seconds. Resource-specific flags override this value.")
-	flag.IntVar(&teamRequeueInterval, "team-requeue-interval", 0, "Requeue interval for Team resources in seconds.")
-	flag.IntVar(&repositoryRequeueInterval, "repository-requeue-interval", 0, "Requeue interval for Repository resources in seconds.")
-	flag.IntVar(&organizationRequeueInterval, "organization-requeue-interval", 0, "Requeue interval for Organization resources in seconds.")
-	flag.IntVar(&branchProtectionRequeueInterval, "branch-protection-requeue-interval", 0, "Requeue interval for BranchProtection resources in seconds.")
+	flag.IntVar(&requeueInterval, "requeue-interval", 0,
+		"Requeue interval for all custom resources managed by this Manager in seconds. "+
+			"Resource-specific flags override this value.")
+	flag.IntVar(&teamRequeueInterval, "team-requeue-interval", 0,
+		"Requeue interval for Team resources in seconds.")
+	flag.IntVar(&repositoryRequeueInterval, "repository-requeue-interval", 0,
+		"Requeue interval for Repository resources in seconds.")
+	flag.IntVar(&organizationRequeueInterval, "organization-requeue-interval", 0,
+		"Requeue interval for Organization resources in seconds.")
+	flag.IntVar(&branchProtectionRequeueInterval, "branch-protection-requeue-interval", 0,
+		"Requeue interval for BranchProtection resources in seconds.")
 	flag.Parse()
 
 	// set resource-specific requeue intervals to the general requeue interval if they are not explicitly set
 	if requeueInterval != 0 {
-		for _, v := range []*int{&teamRequeueInterval, &repositoryRequeueInterval, &organizationRequeueInterval, &branchProtectionRequeueInterval} {
+		intervals := []*int{
+			&teamRequeueInterval,
+			&repositoryRequeueInterval,
+			&organizationRequeueInterval,
+			&branchProtectionRequeueInterval,
+		}
+		for _, v := range intervals {
 			if *v == 0 {
-				v = &requeueInterval
+				*v = requeueInterval
 			}
 		}
 	}
