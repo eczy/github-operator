@@ -1,3 +1,4 @@
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -13,201 +14,220 @@ spec:
     singular: organization
   scope: Namespaced
   versions:
-    - name: v1alpha1
-      schema:
-        openAPIV3Schema:
-          description: Organization is the Schema for the organizations API
-          properties:
-            apiVersion:
-              description: |-
-                APIVersion defines the versioned schema of this representation of an object.
-                Servers should convert recognized schemas to the latest internal value, and
-                may reject unrecognized values.
-                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-              type: string
-            kind:
-              description: |-
-                Kind is a string value representing the REST resource this object represents.
-                Servers may infer this from the endpoint the client submits requests to.
-                Cannot be updated.
-                In CamelCase.
-                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-              type: string
-            metadata:
-              type: object
-            spec:
-              description: OrganizationSpec defines the desired state of Organization
-              properties:
-                advanced_security_enabled_for_new_repositories:
-                  description: Whether GitHub Advanced Security is automatically enabled for new repositories.
-                  type: boolean
-                billing_email:
-                  description: Billing email address. This address is not publicized.
-                  minLength: 1
-                  type: string
-                blog:
-                  type: string
-                company:
-                  description: The company name.
-                  minLength: 1
-                  type: string
-                default_repository_permission:
-                  description: |-
-                    Default permission level members have for organization repositories.
-                    Can be one of: read, write, admin, none
-                  enum:
-                    - read
-                    - write
-                    - none
-                    - admin
-                  type: string
-                dependabot_alerts_enabled_for_new_repositories:
-                  description: Whether Dependabot alerts is automatically enabled for new repositories.
-                  type: boolean
-                dependabot_security_updates_enabled_for_new_repositories:
-                  description: Whether Dependabot security updates is automatically enabled for new repositories.
-                  type: boolean
-                dependency_graph_enabled_for_new_repositories:
-                  description: Whether dependency graph is automatically enabled for new repositories.
-                  type: boolean
-                description:
-                  description: The description of the company.
-                  type: string
-                email:
-                  description: The publicly visible email address.
-                  type: string
-                has_organization_projects:
-                  description: Whether an organization can use organization projects.
-                  type: boolean
-                has_repository_projects:
-                  description: Whether repositories that belong to the organization can use repository projects.
-                  type: boolean
-                location:
-                  description: The location.
-                  type: string
-                login:
-                  description: The organization name. The name is not case sensitive.
-                  minLength: 1
-                  type: string
-                members_can_create_internal_repositories:
-                  description: Whether organization members can create internal repositories, which are visible to all enterprise members. You can only allow members to create internal repositories if your organization is associated with an enterprise account using GitHub Enterprise Cloud or GitHub Enterprise Server 2.20+.
-                  type: boolean
-                members_can_create_pages:
-                  description: Whether organization members can create GitHub Pages sites.
-                  type: boolean
-                members_can_create_private_pages:
-                  description: Whether organization members can create private GitHub Pages sites.
-                  type: boolean
-                members_can_create_private_repositories:
-                  description: Whether organization members can create private repositories, which are visible to organization members with permission.
-                  type: boolean
-                members_can_create_public_pages:
-                  description: Whether organization members can create public GitHub Pages sites.
-                  type: boolean
-                members_can_create_public_repositories:
-                  description: Whether organization members can create public repositories, which are visible to anyone.
-                  type: boolean
-                members_can_create_repositories:
-                  description: Whether of non-admin organization members can create repositories.
-                  type: boolean
-                members_can_fork_private_repositories:
-                  description: Whether organization members can create private GitHub Pages sites.
-                  type: boolean
-                name:
-                  description: The shorthand name of the company.
-                  minLength: 1
-                  type: string
-                secret_scanning_enabled_for_new_repositories:
-                  description: Whether secret scanning is automatically enabled for new repositories.
-                  type: boolean
-                secret_scanning_push_protection_enabled_for_new_repositories:
-                  description: Whether secret scanning push protection is automatically enabled for new repositories.
-                  type: boolean
-                twitter_username:
-                  description: The Twitter username of the company.
-                  type: string
-                web_commit_signoff_required:
-                  description: Whether contributors to organization repositories are required to sign off on commits they make through GitHub's web interface.
-                  type: boolean
-              required:
-                - login
-              type: object
-            status:
-              description: OrganizationStatus defines the observed state of Organization
-              properties:
-                advanced_security_enabled_for_new_repositories:
-                  type: boolean
-                billing_email:
-                  type: string
-                blog:
-                  type: string
-                company:
-                  type: string
-                default_repository_permission:
-                  enum:
-                    - read
-                    - write
-                    - none
-                    - admin
-                  type: string
-                dependabot_alerts_enabled_for_new_repositories:
-                  type: boolean
-                dependabot_security_updates_enabled_for_new_repositories:
-                  type: boolean
-                dependency_graph_enabled_for_new_repositories:
-                  type: boolean
-                description:
-                  type: string
-                email:
-                  type: string
-                has_organization_projects:
-                  type: boolean
-                has_repository_projects:
-                  type: boolean
-                last_update_timestamp:
-                  format: date-time
-                  type: string
-                location:
-                  type: string
-                login:
-                  description: |-
-                    INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-                    Important: Run "make" to regenerate code after modifying this file
-                  type: string
-                members_can_create_internal_repositories:
-                  type: boolean
-                members_can_create_pages:
-                  type: boolean
-                members_can_create_private_pages:
-                  type: boolean
-                members_can_create_private_repositories:
-                  type: boolean
-                members_can_create_public_pages:
-                  type: boolean
-                members_can_create_public_repositories:
-                  type: boolean
-                members_can_create_repositories:
-                  type: boolean
-                members_can_fork_private_repositories:
-                  type: boolean
-                name:
-                  type: string
-                node_id:
-                  type: string
-                secret_scanning_enabled_for_new_repositories:
-                  type: boolean
-                secret_scanning_push_protection_enabled_for_new_repositories:
-                  type: boolean
-                twitter_username:
-                  type: string
-                web_commit_signoff_required:
-                  type: boolean
-              required:
-                - email
-                - name
-              type: object
-          type: object
-      served: true
-      storage: true
-      subresources:
-        status: {}
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Organization is the Schema for the organizations API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: OrganizationSpec defines the desired state of Organization
+            properties:
+              advancedSecurityEnabledForNewRepositories:
+                description: Whether GitHub Advanced Security is automatically enabled
+                  for new repositories.
+                type: boolean
+              billingEmail:
+                description: Billing email address. This address is not publicized.
+                minLength: 1
+                type: string
+              blog:
+                type: string
+              company:
+                description: The company name.
+                minLength: 1
+                type: string
+              defaultRepositoryPermission:
+                description: |-
+                  Default permission level members have for organization repositories.
+                  Can be one of: read, write, admin, none
+                enum:
+                - read
+                - write
+                - none
+                - admin
+                type: string
+              dependabotAlertsEnabledForNewRepositories:
+                description: Whether Dependabot alerts is automatically enabled for
+                  new repositories.
+                type: boolean
+              dependabotSecurityUpdatesEnabledForNewRepositories:
+                description: Whether Dependabot security updates is automatically
+                  enabled for new repositories.
+                type: boolean
+              dependencyGraphEnabledForNewRepositories:
+                description: Whether dependency graph is automatically enabled for
+                  new repositories.
+                type: boolean
+              description:
+                description: The description of the company.
+                type: string
+              email:
+                description: The publicly visible email address.
+                type: string
+              hasOrganizationProjects:
+                description: Whether an organization can use organization projects.
+                type: boolean
+              hasRepositoryProjects:
+                description: Whether repositories that belong to the organization
+                  can use repository projects.
+                type: boolean
+              location:
+                description: The location.
+                type: string
+              login:
+                description: The organization name. The name is not case sensitive.
+                minLength: 1
+                type: string
+              membersCanCreateInternalRepositories:
+                description: Whether organization members can create internal repositories,
+                  which are visible to all enterprise members. You can only allow
+                  members to create internal repositories if your organization is
+                  associated with an enterprise account using GitHub Enterprise Cloud
+                  or GitHub Enterprise Server 2.20+.
+                type: boolean
+              membersCanCreatePages:
+                description: Whether organization members can create GitHub Pages
+                  sites.
+                type: boolean
+              membersCanCreatePrivatePages:
+                description: Whether organization members can create private GitHub
+                  Pages sites.
+                type: boolean
+              membersCanCreatePrivateRepositories:
+                description: Whether organization members can create private repositories,
+                  which are visible to organization members with permission.
+                type: boolean
+              membersCanCreatePublicPages:
+                description: Whether organization members can create public GitHub
+                  Pages sites.
+                type: boolean
+              membersCanCreatePublicRepositories:
+                description: Whether organization members can create public repositories,
+                  which are visible to anyone.
+                type: boolean
+              membersCanCreateRepositories:
+                description: Whether of non-admin organization members can create
+                  repositories.
+                type: boolean
+              membersCanForkPrivateRepositories:
+                description: Whether organization members can create private GitHub
+                  Pages sites.
+                type: boolean
+              name:
+                description: The shorthand name of the company.
+                minLength: 1
+                type: string
+              secretScanningEnabledForNewRepositories:
+                description: Whether secret scanning is automatically enabled for
+                  new repositories.
+                type: boolean
+              secretScanningPushProtectionEnabledForNewRepositories:
+                description: Whether secret scanning push protection is automatically
+                  enabled for new repositories.
+                type: boolean
+              twitterUsername:
+                description: The Twitter username of the company.
+                type: string
+              webCommitSignoffRequired:
+                description: Whether contributors to organization repositories are
+                  required to sign off on commits they make through GitHub's web interface.
+                type: boolean
+            required:
+            - login
+            type: object
+          status:
+            description: OrganizationStatus defines the observed state of Organization
+            properties:
+              advancedSecurityEnabledForNewRepositories:
+                type: boolean
+              billingEmail:
+                type: string
+              blog:
+                type: string
+              company:
+                type: string
+              defaultRepositoryPermission:
+                enum:
+                - read
+                - write
+                - none
+                - admin
+                type: string
+              dependabotAlertsEnabledForNewRepositories:
+                type: boolean
+              dependabotSecurityUpdatesEnabledForNewRepositories:
+                type: boolean
+              dependencyFraphEnabledForNewRepositories:
+                type: boolean
+              description:
+                type: string
+              email:
+                type: string
+              hasOrganizationProjects:
+                type: boolean
+              hasRepositoryProjects:
+                type: boolean
+              lastUpdateTimestamp:
+                format: date-time
+                type: string
+              location:
+                type: string
+              login:
+                description: |-
+                  INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+                  Important: Run "make" to regenerate code after modifying this file
+                type: string
+              membersCanCreateInternalRepositories:
+                type: boolean
+              membersCanCreatePages:
+                type: boolean
+              membersCanCreatePrivatePages:
+                type: boolean
+              membersCanCreatePrivateRepositories:
+                type: boolean
+              membersCanCreatePublicPages:
+                type: boolean
+              membersCanCreatePublicRepositories:
+                type: boolean
+              membersCanCreateRepositories:
+                type: boolean
+              membersCanForkPrivateRepositories:
+                type: boolean
+              name:
+                type: string
+              nodeId:
+                type: string
+              secretScanningEnabledForNewRepositories:
+                type: boolean
+              secretScanningPushProtectionEnabledForNewRepositories:
+                type: boolean
+              twitterUsername:
+                type: string
+              webCommitSignoffRequired:
+                type: boolean
+            required:
+            - email
+            - name
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
