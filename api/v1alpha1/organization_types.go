@@ -46,7 +46,7 @@ type OrganizationSpec struct {
 	//+kubebuilder:validation:MinLength=1
 
 	// The company name.
-	Company string `json:"comapny,omitempty"`
+	Company string `json:"company,omitempty"`
 
 	// The publicly visible email address.
 	// +optional
@@ -151,7 +151,7 @@ type OrganizationStatus struct {
 
 	Name                                                  string                       `json:"name"`
 	BillingEmail                                          string                       `json:"billing_email,omitempty"`
-	Company                                               string                       `json:"comapny,omitempty"`
+	Company                                               string                       `json:"company,omitempty"`
 	Email                                                 string                       `json:"email"`
 	TwitterUsername                                       *string                      `json:"twitter_username,omitempty"`
 	Location                                              *string                      `json:"location,omitempty"`

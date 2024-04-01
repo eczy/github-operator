@@ -168,10 +168,7 @@ func (r *TeamReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *TeamReconciler) createTeam(ctx context.Context, team *githubv1alpha1.Team) (*github.Team, error) {
-	newTeam, err := teamResourceToNewTeam(team)
-	if err != nil {
-		return nil, fmt.Errorf("creating github.NewTeam object: %w", err)
-	}
+	newTeam := teamResourceToNewTeam(team)
 	created, err := r.GitHubClient.CreateTeam(ctx, team.Spec.Organization, newTeam)
 	if err != nil {
 		return nil, fmt.Errorf("creating GitHub Team: %w", err)
@@ -345,7 +342,7 @@ func (r *TeamReconciler) deleteTeam(ctx context.Context, team *githubv1alpha1.Te
 }
 
 // teamResourceToNewTeam creates a github.NewTeam instance from a Team resource
-func teamResourceToNewTeam(team *githubv1alpha1.Team) (github.NewTeam, error) {
+func teamResourceToNewTeam(team *githubv1alpha1.Team) github.NewTeam {
 	var privacy *string
 	if team.Spec.Privacy != nil {
 		tmp := string(*team.Spec.Privacy)
@@ -357,5 +354,5 @@ func teamResourceToNewTeam(team *githubv1alpha1.Team) (github.NewTeam, error) {
 		ParentTeamID: team.Spec.ParentTeamId,
 		Privacy:      privacy,
 	}
-	return newTeam, nil
+	return newTeam
 }

@@ -11,17 +11,17 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: team-viewer-role
 rules:
-- apiGroups:
-  - github.github-operator.eczy.io
-  resources:
-  - teams
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - github.github-operator.eczy.io
-  resources:
-  - teams/status
-  verbs:
-  - get
+  - apiGroups:
+      - github.github-operator.eczy.io
+    resources:
+      - teams
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - github.github-operator.eczy.io
+    resources:
+      - teams/status
+    verbs:
+      - get

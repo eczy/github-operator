@@ -17,13 +17,18 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -111,8 +116,8 @@ var _ = BeforeSuite(func() {
 
 	recorderMode := recorder.ModeRecordOnce
 	mode, ok := os.LookupEnv("GITHUB_OPERATOR_RECORDER_MODE")
+	lowerMode := strings.ToLower(mode)
 	if ok {
-		lowerMode := strings.ToLower(mode)
 		switch lowerMode {
 		case "record-only":
 			recorderMode = recorder.ModeRecordOnly
@@ -148,15 +153,67 @@ var _ = BeforeSuite(func() {
 		RealTransport:      http.DefaultTransport,
 		SkipRequestLatency: true,
 	})
+	Expect(err).NotTo(HaveOccurred())
 	rmSecretsHook := func(i *cassette.Interaction) error {
 		delete(i.Request.Headers, "Authorization")
-		if path.Base(i.Request.URL) == "access_tokens" {
-			i.DiscardOnSave = true
-		}
 		return nil
 	}
 	rec.AddHook(rmSecretsHook, recorder.AfterCaptureHook)
-	Expect(err).NotTo(HaveOccurred())
+	rec.SetMatcher(func(r1 *http.Request, r2 cassette.Request) bool {
+		// Method
+		if r1.Method != r2.Method {
+			return false
+		}
+		if r1.Method == "" && r2.Method != "GET" {
+			// for client requests, "" means GET
+			return false
+		}
+		// URL
+		if r1.URL.String() != r2.URL {
+			return false
+		}
+		// Body (as JSON)
+		if r1.Body == nil && r2.Body == "" {
+			return true
+		}
+		if r1.Body != nil && r2.Body == "" {
+			return false
+		}
+		if r1.Body == nil && r2.Body != "" {
+			return false
+		}
+		r1BodyBytes, err := io.ReadAll(r1.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = r1.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		r1.Body = io.NopCloser(bytes.NewBuffer(r1BodyBytes))
+		if len(r1BodyBytes) == 0 && len(r2.Body) == 0 {
+			return true
+		}
+		if len(r1BodyBytes) == 0 && len(r2.Body) != 0 {
+			return false
+		}
+		if len(r1BodyBytes) != 0 && len(r2.Body) == 0 {
+			return false
+		}
+		// at this point both r1 and r2 have bodies
+		var r1Body interface{}
+		err = json.Unmarshal(r1BodyBytes, &r1Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		r2BodyBytes := []byte(r2.Body)
+		var r2Body interface{}
+		err = json.Unmarshal(r2BodyBytes, &r2Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return reflect.DeepEqual(r1Body, r2Body)
+	})
 	vcrRecorder = rec
 	if err0 == nil {
 		c, err := NewGitHubClientFromInstallationCredentials(ctx, *instCreds, vcrRecorder)
@@ -166,13 +223,14 @@ var _ = BeforeSuite(func() {
 		c, err := NewGitHubClientFromOauthCredentials(ctx, *oauthCreds, vcrRecorder)
 		Expect(err).NotTo(HaveOccurred())
 		ghClient = c
-	} else {
-		fmt.Fprintf(os.Stderr, "unable to load GitHub creds: %v\n", errors.Join(err0, err1))
-		fmt.Fprint(os.Stderr, "continuing in replay only mode\n")
-		recorderMode = recorder.ModeReplayOnly
-		c, err := gh.NewClient()
+	} else if lowerMode == "replay-only" {
+		fmt.Fprintf(os.Stderr, "no GitHub credentials found; continuing in 'replay-only' mode\n")
+		c, err := gh.NewClient(gh.WithRoundTripper(vcrRecorder))
 		Expect(err).NotTo(HaveOccurred())
 		ghClient = c
+	} else {
+		fmt.Fprintf(os.Stderr, "no GitHub credentials found; set credential env vars or run in 'replay-only' mode\n")
+		log.Fatal(errors.Join(err0, err1))
 	}
 })
 
