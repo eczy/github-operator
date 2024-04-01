@@ -9,5 +9,4 @@ metadata:
     app.kubernetes.io/created-by: github-operator
   name: organization-sample
 spec:
-
-# TODO(user): Add fields here
+  login: test-organization

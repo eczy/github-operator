@@ -127,21 +127,21 @@ func (r *OrganizationReconciler) updateOrganization(ctx context.Context, organiz
 	// if organization.Spec.Login != ghOrganization.GetLogin() {
 	// }
 	// name
-	if organization.Spec.Name != ghOrganization.GetName() {
+	if ptrNonNilAndNotEqualTo(organization.Spec.Name, ghOrganization.GetName()) {
 		log.Info("organization name update", "from", ghOrganization.GetName(), "to", organization.Spec.Name)
-		updateOrg.Name = github.String(organization.Spec.Name)
+		updateOrg.Name = organization.Spec.Name
 		needsUpdate = true
 	}
 	// billing email
-	if organization.Spec.BillingEmail != ghOrganization.GetBillingEmail() {
+	if ptrNonNilAndNotEqualTo(organization.Spec.BillingEmail, ghOrganization.GetBillingEmail()) {
 		log.Info("organization billing email update", "from", ghOrganization.GetBillingEmail(), "to", organization.Spec.BillingEmail)
-		updateOrg.BillingEmail = github.String(organization.Spec.BillingEmail)
+		updateOrg.BillingEmail = organization.Spec.BillingEmail
 		needsUpdate = true
 	}
 	// company
-	if organization.Spec.Company != ghOrganization.GetCompany() {
+	if ptrNonNilAndNotEqualTo(organization.Spec.Company, ghOrganization.GetCompany()) {
 		log.Info("organization company update", "from", ghOrganization.GetCompany(), "to", organization.Spec.Company)
-		updateOrg.Company = github.String(organization.Spec.Company)
+		updateOrg.Company = organization.Spec.Company
 		needsUpdate = true
 	}
 	// email
@@ -279,10 +279,10 @@ func (r *OrganizationReconciler) updateOrganization(ctx context.Context, organiz
 
 	// perform update if necessary
 	if needsUpdate || organization.Status.LastUpdateTimestamp == nil {
-		log.Info("updating organization", "name", organization.Spec.Name)
+		log.Info("updating organization", "login", organization.Spec.Login)
 		updated, err := r.GitHubClient.UpdateOrganization(ctx, *ghOrganization.Login, &updateOrg)
 		if err != nil {
-			log.Error(err, "unable to update organization", "name", organization.Spec.Name)
+			log.Error(err, "unable to update organization", "login", organization.Spec.Login)
 			return err
 		}
 		ghOrganization = updated

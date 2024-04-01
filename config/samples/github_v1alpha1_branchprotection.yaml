@@ -9,5 +9,6 @@ metadata:
     app.kubernetes.io/created-by: github-operator
   name: branchprotection-sample
 spec:
-
-# TODO(user): Add fields here
+  repository_owner: test-organization
+  repository_name: test-repository
+  pattern: master
