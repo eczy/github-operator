@@ -258,7 +258,7 @@ func (r *OrganizationReconciler) updateOrganization(ctx context.Context, organiz
 		updateOrg.DependabotAlertsEnabledForNewRepos = organization.Spec.DependabotAlertsEnabledForNewRepositories
 		needsUpdate = true
 	}
-	// dependabot secruity updates enabled for new repositories
+	// dependabot security updates enabled for new repositories
 	if ptrNonNilAndNotEqualTo(organization.Spec.DependabotSecurityUpdatesEnabledForNewRepositories, ghOrganization.GetDependabotSecurityUpdatesEnabledForNewRepos()) {
 		log.Info("organization dependabotSecurityUpdatesEnabledForNewRepositories update", "from", ghOrganization.GetDependabotSecurityUpdatesEnabledForNewRepos(), "to", *organization.Spec.DependabotAlertsEnabledForNewRepositories)
 		updateOrg.DependabotSecurityUpdatesEnabledForNewRepos = organization.Spec.DependabotSecurityUpdatesEnabledForNewRepositories

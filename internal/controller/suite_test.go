@@ -116,8 +116,8 @@ var _ = BeforeSuite(func() {
 
 	recorderMode := recorder.ModeRecordOnce
 	mode, ok := os.LookupEnv("GITHUB_OPERATOR_RECORDER_MODE")
+	lowerMode := strings.ToLower(mode)
 	if ok {
-		lowerMode := strings.ToLower(mode)
 		switch lowerMode {
 		case "record-only":
 			recorderMode = recorder.ModeRecordOnly
@@ -186,7 +186,10 @@ var _ = BeforeSuite(func() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		r1.Body.Close()
+		err = r1.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
 		r1.Body = io.NopCloser(bytes.NewBuffer(r1BodyBytes))
 		if len(r1BodyBytes) == 0 && len(r2.Body) == 0 {
 			return true
@@ -220,13 +223,14 @@ var _ = BeforeSuite(func() {
 		c, err := NewGitHubClientFromOauthCredentials(ctx, *oauthCreds, vcrRecorder)
 		Expect(err).NotTo(HaveOccurred())
 		ghClient = c
-	} else {
-		fmt.Fprintf(os.Stderr, "unable to load GitHub creds: %v\n", errors.Join(err0, err1))
-		fmt.Fprint(os.Stderr, "continuing in replay only mode\n")
-		recorderMode = recorder.ModeReplayOnly
+	} else if lowerMode == "replay-only" {
+		fmt.Fprintf(os.Stderr, "no GitHub credentials found; continuing in 'replay-only' mode\n")
 		c, err := gh.NewClient(gh.WithRoundTripper(vcrRecorder))
 		Expect(err).NotTo(HaveOccurred())
 		ghClient = c
+	} else {
+		fmt.Fprintf(os.Stderr, "no GitHub credentials found; set credential env vars or run in 'replay-only' mode\n")
+		log.Fatal(errors.Join(err0, err1))
 	}
 })
 

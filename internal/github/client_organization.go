@@ -43,7 +43,7 @@ func (c *Client) GetOrganizationByDatabaseId(ctx context.Context, dbId int64) (*
 }
 
 func (c *Client) GetOrganizationByNodeId(ctx context.Context, nodeId string) (*github.Organization, error) {
-	// TOOD: this is inefficient since it takes two API calls.
+	// TODO: this is inefficient since it takes two API calls.
 	// This is done this way for the moment since it lets us update an existing resource in event of naming changes.
 	// In the future, we should probably move to an explicit internal data structure instead
 	// of relying on a library and define conversions.
