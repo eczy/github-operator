@@ -38,105 +38,105 @@ spec:
             spec:
               description: BranchProtectionSpec defines the desired state of BranchProtection
               properties:
-                allows_deletions:
+                allowsDeletions:
                   description: Can this branch be deleted.
                   type: boolean
-                allows_force_pushes:
+                allowsForcePushes:
                   description: Are force pushes allowed on this branch.
                   type: boolean
-                blocks_creations:
+                blocksCreations:
                   description: Is branch creation a protected operation.
                   type: boolean
-                branch_pattern:
+                branchPattern:
                   description: Identifies the protection rule pattern.
                   minLength: 1
                   type: string
-                bypass_force_push_apps:
+                bypassForcePushApps:
                   description: A list of apps able to force push for this branch protection rule.
                   items:
                     type: string
                   type: array
-                bypass_force_push_teams:
+                bypassForcePushTeams:
                   description: A list of teams able to force push for this branch protection rule.
                   items:
                     type: string
                   type: array
-                bypass_force_push_users:
+                bypassForcePushUsers:
                   description: A list of users able to force push for this branch protection rule.
                   items:
                     type: string
                   type: array
-                bypass_pull_request_apps:
+                bypassPullRequestApps:
                   description: A list of apps able to bypass PRs for this branch protection rule.
                   items:
                     type: string
                   type: array
-                bypass_pull_request_teams:
+                bypassPullRequestTeams:
                   description: A list of teams able to bypass PRs for this branch protection rule.
                   items:
                     type: string
                   type: array
-                bypass_pull_request_users:
+                bypassPullRequestUsers:
                   description: A list of users able to bypass PRs for this branch protection rule.
                   items:
                     type: string
                   type: array
-                dismisses_stale_reviews:
+                dismissesStaleReviews:
                   description: Will new commits pushed to matching branches dismiss pull request review approvals.
                   type: boolean
-                is_admin_enforced:
+                isAdminEnforced:
                   description: Can admins override branch protection.
                   type: boolean
-                lock_allows_fetch_and_merge:
+                lockAllowsFetchAndMerge:
                   description: Whether users can pull changes from upstream when the branch is locked. Set to true to allow fork syncing. Set to false to prevent fork syncing.
                   type: boolean
-                lock_branch:
+                lockBranch:
                   description: Whether to set the branch as read-only. If this is true, users will not be able to push to the branch.
                   type: boolean
-                push_allowance_apps:
+                pushAllowanceApps:
                   description: A list of app push allowances for this branch protection rule.
                   items:
                     type: string
                   type: array
-                push_allowance_teams:
+                pushAllowanceTeams:
                   description: A list of team push allowances for this branch protection rule.
                   items:
                     type: string
                   type: array
-                push_allowance_users:
+                pushAllowanceUsers:
                   description: A list of user push allowances for this branch protection rule.
                   items:
                     type: string
                   type: array
-                repository_name:
+                repositoryName:
                   description: The repository associated with this branch protection rule.
                   minLength: 1
                   type: string
-                repository_owner:
+                repositoryOwner:
                   description: The owner of the repository associated with this branch protection rule.
                   minLength: 1
                   type: string
-                require_last_push_approval:
+                requireLastPushApproval:
                   description: Whether the most recent push must be approved by someone other than the person who pushed it.
                   type: boolean
-                required_approving_review_count:
+                requiredApprovingReviewCount:
                   description: Number of approving reviews required to update matching branches.
                   type: integer
-                required_deployment_environments:
+                requiredDeploymentEnvironments:
                   description: List of required deployment environments that must be deployed successfully to update matching branches.
                   items:
                     type: string
                   type: array
-                required_status_check_contexts:
+                requiredStatusCheckContexts:
                   description: List of required status check contexts that must pass for commits to be accepted to matching branches.
                   items:
                     type: string
                   type: array
-                required_status_checks:
+                requiredStatusChecks:
                   description: List of required status checks that must pass for commits to be accepted to matching branches.
                   items:
                     properties:
-                      app_id:
+                      appId:
                         type: string
                       context:
                         type: string
@@ -144,141 +144,141 @@ spec:
                       - context
                     type: object
                   type: array
-                requires_approving_reviews:
+                requiresApprovingReviews:
                   description: Are approving reviews required to update matching branches.
                   type: boolean
-                requires_code_owner_reviews:
+                requiresCodeOwnerReviews:
                   description: Are reviews from code owners required to update matching branches.
                   type: boolean
-                requires_commit_signatures:
+                requiresCommitSignatures:
                   description: Are commits required to be signed.
                   type: boolean
-                requires_conversation_resolution:
+                requiresConversationResolution:
                   description: Are conversations required to be resolved before merging.
                   type: boolean
-                requires_deployments:
+                requiresDeployments:
                   description: Does this branch require deployment to specific environments before merging.
                   type: boolean
-                requires_linear_history:
+                requiresLinearHistory:
                   description: Are merge commits prohibited from being pushed to this branch.
                   type: boolean
-                requires_status_checks:
+                requiresStatusChecks:
                   description: Are status checks required to update matching branches.
                   type: boolean
-                requires_strict_status_checks:
+                requiresStrictStatusChecks:
                   description: Are branches required to be up to date before merging.
                   type: boolean
-                restricts_pushes:
+                restrictsPushes:
                   description: Is pushing to matching branches restricted.
                   type: boolean
-                restricts_review_dismissals:
+                restrictsReviewDismissals:
                   description: Is dismissal of pull request reviews restricted.
                   type: boolean
-                review_dismissal_apps:
+                reviewDismissalApps:
                   description: A list of app review dismissal allowances for this branch protection rule.
                   items:
                     type: string
                   type: array
-                review_dismissal_teams:
+                reviewDismissalTeams:
                   description: A list of team review dismissal allowances for this branch protection rule.
                   items:
                     type: string
                   type: array
-                review_dismissal_users:
+                reviewDismissalUsers:
                   description: A list of user review dismissal allowances for this branch protection rule.
                   items:
                     type: string
                   type: array
               required:
-                - branch_pattern
-                - repository_name
-                - repository_owner
+                - branchPattern
+                - repositoryName
+                - repositoryOwner
               type: object
             status:
               description: BranchProtectionStatus defines the observed state of BranchProtection
               properties:
-                allows_deletions:
+                allowsDeletions:
                   type: boolean
-                allows_force_pushes:
+                allowsForcePushes:
                   type: boolean
-                blocks_creations:
+                blocksCreations:
                   type: boolean
-                branch_pattern:
+                branchPattern:
                   type: string
-                bypass_force_push_apps:
+                bypassForcePushApps:
                   items:
                     type: string
                   type: array
-                bypass_force_push_teams:
+                bypassForcePushUsers:
                   items:
                     type: string
                   type: array
-                bypass_force_push_users:
+                bypassForcePushteams:
                   items:
                     type: string
                   type: array
-                bypass_pull_request_apps:
+                bypassPullRequestApps:
                   items:
                     type: string
                   type: array
-                bypass_pull_request_teams:
+                bypassPullRequestTeams:
                   items:
                     type: string
                   type: array
-                bypass_pull_request_users:
+                bypassPullRequestUsers:
                   items:
                     type: string
                   type: array
-                dismisses_stale_reviews:
+                dismissesStaleReviews:
                   type: boolean
-                is_admin_enforced:
+                isAdminEnforced:
                   type: boolean
-                last_update_timestamp:
+                lastUpdateTimestamp:
                   description: |-
                     INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
                     Important: Run "make" to regenerate code after modifying this file
                   format: date-time
                   type: string
-                lock_allows_fetch_and_merge:
+                lockAllowsFetchAndMerge:
                   type: boolean
-                lock_branch:
+                lockBranch:
                   type: boolean
-                node_id:
+                nodeId:
                   type: string
-                push_allowance_apps:
+                pushAllowanceApps:
                   items:
                     type: string
                   type: array
-                push_allowance_teams:
+                pushAllowanceTeams:
                   items:
                     type: string
                   type: array
-                push_allowance_users:
+                pushAllowanceUsers:
                   items:
                     type: string
                   type: array
-                repository_name:
+                repositoryName:
                   type: string
-                repository_node_id:
+                repositoryNodeId:
                   type: string
-                repository_owner:
+                repositoryOwner:
                   type: string
-                require_last_push_approval:
+                requireLastPushApproval:
                   type: boolean
-                required_approving_review_count:
+                requiredApprovingReviewCount:
                   type: integer
-                required_deployment_environments:
+                requiredDeploymentEnvironments:
                   items:
                     type: string
                   type: array
-                required_status_check_contexts:
+                requiredStatusCheckContexts:
                   items:
                     type: string
                   type: array
-                required_status_checks:
+                requiredStatusChecks:
                   items:
                     properties:
-                      app_id:
+                      appId:
                         type: string
                       context:
                         type: string
@@ -286,35 +286,35 @@ spec:
                       - context
                     type: object
                   type: array
-                requires_approving_reviews:
+                requiresApprovingReviews:
                   type: boolean
-                requires_code_owner_reviews:
+                requiresCodeOwnerReviews:
                   type: boolean
-                requires_commit_signatures:
+                requiresCommitSignatures:
                   type: boolean
-                requires_conversation_resolution:
+                requiresConversationResolution:
                   type: boolean
-                requires_deployments:
+                requiresDeployments:
                   type: boolean
-                requires_linear_history:
+                requiresLinearHistory:
                   type: boolean
-                requires_status_checks:
+                requiresStatusChecks:
                   type: boolean
-                requires_strict_status_checks:
+                requiresStrictStatusChecks:
                   type: boolean
-                restricts_pushes:
+                restrictsPushes:
                   type: boolean
-                restricts_review_dismissals:
+                restrictsReviewDismissals:
                   type: boolean
-                review_dismissal_apps:
+                reviewDismissalApps:
                   items:
                     type: string
                   type: array
-                review_dismissal_teams:
+                reviewDismissalTeams:
                   items:
                     type: string
                   type: array
-                review_dismissal_users:
+                reviewDismissalUsers:
                   items:
                     type: string
                   type: array

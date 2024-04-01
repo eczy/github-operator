@@ -38,10 +38,10 @@ spec:
             spec:
               description: OrganizationSpec defines the desired state of Organization
               properties:
-                advanced_security_enabled_for_new_repositories:
+                advancedSecurityEnabledForNewRepositories:
                   description: Whether GitHub Advanced Security is automatically enabled for new repositories.
                   type: boolean
-                billing_email:
+                billingEmail:
                   description: Billing email address. This address is not publicized.
                   minLength: 1
                   type: string
@@ -51,7 +51,7 @@ spec:
                   description: The company name.
                   minLength: 1
                   type: string
-                default_repository_permission:
+                defaultRepositoryPermission:
                   description: |-
                     Default permission level members have for organization repositories.
                     Can be one of: read, write, admin, none
@@ -61,13 +61,13 @@ spec:
                     - none
                     - admin
                   type: string
-                dependabot_alerts_enabled_for_new_repositories:
+                dependabotAlertsEnabledForNewRepositories:
                   description: Whether Dependabot alerts is automatically enabled for new repositories.
                   type: boolean
-                dependabot_security_updates_enabled_for_new_repositories:
+                dependabotSecurityUpdatesEnabledForNewRepositories:
                   description: Whether Dependabot security updates is automatically enabled for new repositories.
                   type: boolean
-                dependency_graph_enabled_for_new_repositories:
+                dependencyGraphEnabledForNewRepositories:
                   description: Whether dependency graph is automatically enabled for new repositories.
                   type: boolean
                 description:
@@ -76,10 +76,10 @@ spec:
                 email:
                   description: The publicly visible email address.
                   type: string
-                has_organization_projects:
+                hasOrganizationProjects:
                   description: Whether an organization can use organization projects.
                   type: boolean
-                has_repository_projects:
+                hasRepositoryProjects:
                   description: Whether repositories that belong to the organization can use repository projects.
                   type: boolean
                 location:
@@ -89,44 +89,44 @@ spec:
                   description: The organization name. The name is not case sensitive.
                   minLength: 1
                   type: string
-                members_can_create_internal_repositories:
+                membersCanCreateInternalRepositories:
                   description: Whether organization members can create internal repositories, which are visible to all enterprise members. You can only allow members to create internal repositories if your organization is associated with an enterprise account using GitHub Enterprise Cloud or GitHub Enterprise Server 2.20+.
                   type: boolean
-                members_can_create_pages:
+                membersCanCreatePages:
                   description: Whether organization members can create GitHub Pages sites.
                   type: boolean
-                members_can_create_private_pages:
+                membersCanCreatePrivatePages:
                   description: Whether organization members can create private GitHub Pages sites.
                   type: boolean
-                members_can_create_private_repositories:
+                membersCanCreatePrivateRepositories:
                   description: Whether organization members can create private repositories, which are visible to organization members with permission.
                   type: boolean
-                members_can_create_public_pages:
+                membersCanCreatePublicPages:
                   description: Whether organization members can create public GitHub Pages sites.
                   type: boolean
-                members_can_create_public_repositories:
+                membersCanCreatePublicRepositories:
                   description: Whether organization members can create public repositories, which are visible to anyone.
                   type: boolean
-                members_can_create_repositories:
+                membersCanCreateRepositories:
                   description: Whether of non-admin organization members can create repositories.
                   type: boolean
-                members_can_fork_private_repositories:
+                membersCanForkPrivateRepositories:
                   description: Whether organization members can create private GitHub Pages sites.
                   type: boolean
                 name:
                   description: The shorthand name of the company.
                   minLength: 1
                   type: string
-                secret_scanning_enabled_for_new_repositories:
+                secretScanningEnabledForNewRepositories:
                   description: Whether secret scanning is automatically enabled for new repositories.
                   type: boolean
-                secret_scanning_push_protection_enabled_for_new_repositories:
+                secretScanningPushProtectionEnabledForNewRepositories:
                   description: Whether secret scanning push protection is automatically enabled for new repositories.
                   type: boolean
-                twitter_username:
+                twitterUsername:
                   description: The Twitter username of the company.
                   type: string
-                web_commit_signoff_required:
+                webCommitSignoffRequired:
                   description: Whether contributors to organization repositories are required to sign off on commits they make through GitHub's web interface.
                   type: boolean
               required:
@@ -135,36 +135,36 @@ spec:
             status:
               description: OrganizationStatus defines the observed state of Organization
               properties:
-                advanced_security_enabled_for_new_repositories:
+                advancedSecurityEnabledForNewRepositories:
                   type: boolean
-                billing_email:
+                billingEmail:
                   type: string
                 blog:
                   type: string
                 company:
                   type: string
-                default_repository_permission:
+                defaultRepositoryPermission:
                   enum:
                     - read
                     - write
                     - none
                     - admin
                   type: string
-                dependabot_alerts_enabled_for_new_repositories:
+                dependabotAlertsEnabledForNewRepositories:
                   type: boolean
-                dependabot_security_updates_enabled_for_new_repositories:
+                dependabotSecurityUpdatesEnabledForNewRepositories:
                   type: boolean
-                dependency_graph_enabled_for_new_repositories:
+                dependencyFraphEnabledForNewRepositories:
                   type: boolean
                 description:
                   type: string
                 email:
                   type: string
-                has_organization_projects:
+                hasOrganizationProjects:
                   type: boolean
-                has_repository_projects:
+                hasRepositoryProjects:
                   type: boolean
-                last_update_timestamp:
+                lastUpdateTimestamp:
                   format: date-time
                   type: string
                 location:
@@ -174,33 +174,33 @@ spec:
                     INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
                     Important: Run "make" to regenerate code after modifying this file
                   type: string
-                members_can_create_internal_repositories:
+                membersCanCreateInternalRepositories:
                   type: boolean
-                members_can_create_pages:
+                membersCanCreatePages:
                   type: boolean
-                members_can_create_private_pages:
+                membersCanCreatePrivatePages:
                   type: boolean
-                members_can_create_private_repositories:
+                membersCanCreatePrivateRepositories:
                   type: boolean
-                members_can_create_public_pages:
+                membersCanCreatePublicPages:
                   type: boolean
-                members_can_create_public_repositories:
+                membersCanCreatePublicRepositories:
                   type: boolean
-                members_can_create_repositories:
+                membersCanCreateRepositories:
                   type: boolean
-                members_can_fork_private_repositories:
+                membersCanForkPrivateRepositories:
                   type: boolean
                 name:
                   type: string
-                node_id:
+                nodeId:
                   type: string
-                secret_scanning_enabled_for_new_repositories:
+                secretScanningEnabledForNewRepositories:
                   type: boolean
-                secret_scanning_push_protection_enabled_for_new_repositories:
+                secretScanningPushProtectionEnabledForNewRepositories:
                   type: boolean
-                twitter_username:
+                twitterUsername:
                   type: string
-                web_commit_signoff_required:
+                webCommitSignoffRequired:
                   type: boolean
               required:
                 - email

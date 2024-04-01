@@ -156,9 +156,23 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	rmSecretsHook := func(i *cassette.Interaction) error {
 		delete(i.Request.Headers, "Authorization")
+		if path.Base(i.Request.URL) == "access_tokens" {
+			var body map[string]interface{}
+			err := json.Unmarshal([]byte(i.Response.Body), &body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			body["token"] = ""
+			body["expires_at"] = ""
+			modified, err := json.Marshal(body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			i.Response.Body = string(modified)
+		}
 		return nil
 	}
-	rec.AddHook(rmSecretsHook, recorder.AfterCaptureHook)
+	rec.AddHook(rmSecretsHook, recorder.BeforeSaveHook)
 	rec.SetMatcher(func(r1 *http.Request, r2 cassette.Request) bool {
 		// Method
 		if r1.Method != r2.Method {

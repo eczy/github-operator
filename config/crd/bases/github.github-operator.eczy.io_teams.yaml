@@ -45,7 +45,7 @@ spec:
                   description: Name of the team.
                   minLength: 1
                   type: string
-                notification_setting:
+                notificationSetting:
                   description: Notification setting for members of the team.
                   enum:
                     - notifications_enabled
@@ -55,7 +55,7 @@ spec:
                   description: Organization name. Not case sensitive.
                   minLength: 1
                   type: string
-                parent_team_id:
+                parentTeamId:
                   description: ID of the team to set as the parent of this team
                   format: int64
                   type: integer
@@ -88,27 +88,27 @@ spec:
                 id:
                   format: int64
                   type: integer
-                last_update_timestamp:
+                lastUpdateTimestamp:
                   format: date-time
                   type: string
                 name:
                   type: string
-                node_id:
+                nodeId:
                   type: string
-                notification_setting:
+                notificationSetting:
                   enum:
                     - notifications_enabled
                     - notifications_disabled
                   type: string
-                organization_login:
+                organizationId:
+                  format: int64
+                  type: integer
+                organizationLogin:
                   type: string
-                organization_slug:
+                parentTeamId:
                   format: int64
                   type: integer
-                parent_team_id:
-                  format: int64
-                  type: integer
-                parent_team_slug:
+                parentTeamSlug:
                   type: string
                 privacy:
                   description: Privacy configures the visibility of the team.
