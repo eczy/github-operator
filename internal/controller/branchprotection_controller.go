@@ -137,7 +137,7 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{RequeueAfter: r.RequeueInterval}, nil
+			return ctrl.Result{}, nil
 		}
 	}
 
