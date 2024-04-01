@@ -55,9 +55,7 @@ var _ = Describe("Organization Controller", func() {
 						Namespace: "default",
 					},
 					Spec: githubv1alpha1.OrganizationSpec{
-						Login:        testOrganization,
-						Name:         testOrganization,
-						BillingEmail: "fakeemailfoobar@gmail.com",
+						Login: testOrganization,
 					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -125,11 +123,11 @@ var _ = Describe("Organization Controller", func() {
 
 		It("should successfully reconcile an updated Organization name", func() {
 			resource := &githubv1alpha1.Organization{}
-			newName := ghTestResourcePrefix + "foo"
+			newName := "foo"
 
 			By("Updating the Organization resource Spec name")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
-			resource.Spec.Name = newName
+			resource.Spec.Name = &newName
 			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
 
 			By("Reconciling the resource")

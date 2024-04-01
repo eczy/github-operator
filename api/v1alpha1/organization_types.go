@@ -36,17 +36,20 @@ type OrganizationSpec struct {
 	//+kubebuilder:validation:MinLength=1
 
 	// The shorthand name of the company.
-	Name string `json:"name"`
+	// +optional
+	Name *string `json:"name,omitempty"`
 
 	//+kubebuilder:validation:MinLength=1
 
 	// Billing email address. This address is not publicized.
-	BillingEmail string `json:"billing_email,omitempty"`
+	// +optional
+	BillingEmail *string `json:"billing_email,omitempty"`
 
 	//+kubebuilder:validation:MinLength=1
 
 	// The company name.
-	Company string `json:"company,omitempty"`
+	// +optional
+	Company *string `json:"company,omitempty"`
 
 	// The publicly visible email address.
 	// +optional

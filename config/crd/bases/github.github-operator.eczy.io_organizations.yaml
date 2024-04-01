@@ -131,7 +131,6 @@ spec:
                   type: boolean
               required:
                 - login
-                - name
               type: object
             status:
               description: OrganizationStatus defines the observed state of Organization
