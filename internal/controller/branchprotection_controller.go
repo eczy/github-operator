@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -52,6 +53,7 @@ type BranchProtectionReconciler struct {
 	Scheme                   *runtime.Scheme
 	GitHubClient             BranchProtectionRequester
 	DeleteOnResourceDeletion bool
+	RequeueInterval          time.Duration
 }
 
 //+kubebuilder:rbac:groups=github.github-operator.eczy.io,resources=branchprotections,verbs=get;list;watch;create;update;patch;delete
@@ -145,7 +147,7 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: r.RequeueInterval}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
