@@ -48,11 +48,11 @@ type TeamSpec struct {
 
 	// Notification setting for members of the team.
 	// +optional
-	NotificationSetting *NotificationSetting `json:"notification_setting,omitempty"`
+	NotificationSetting *NotificationSetting `json:"notificationSetting,omitempty"`
 
 	// ID of the team to set as the parent of this team
 	// +optional
-	ParentTeamId *int64 `json:"parent_team_id,omitempty"`
+	ParentTeamId *int64 `json:"parentTeamId,omitempty"`
 
 	// Repository permissions to assign to this team
 	// +optional
@@ -65,17 +65,17 @@ type TeamStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	Id                  *int64                          `json:"id,omitempty"`
-	NodeId              *string                         `json:"node_id,omitempty"`
+	NodeId              *string                         `json:"nodeId,omitempty"`
 	Slug                *string                         `json:"slug,omitempty"`
-	LastUpdateTimestamp *metav1.Time                    `json:"last_update_timestamp,omitempty"`
-	OrganizationLogin   *string                         `json:"organization_login,omitempty"`
-	OrganizationId      *int64                          `json:"organization_slug,omitempty"`
+	LastUpdateTimestamp *metav1.Time                    `json:"lastUpdateTimestamp,omitempty"`
+	OrganizationLogin   *string                         `json:"organizationLogin,omitempty"`
+	OrganizationId      *int64                          `json:"organizationId,omitempty"`
 	Name                *string                         `json:"name,omitempty"`
 	Description         *string                         `json:"description,omitempty"`
 	Privacy             *Privacy                        `json:"privacy,omitempty"`
-	NotificationSetting *NotificationSetting            `json:"notification_setting,omitempty"`
-	ParentTeamId        *int64                          `json:"parent_team_id,omitempty"`
-	ParentTeamSlug      *string                         `json:"parent_team_slug,omitempty"`
+	NotificationSetting *NotificationSetting            `json:"notificationSetting,omitempty"`
+	ParentTeamId        *int64                          `json:"parentTeamId,omitempty"`
+	ParentTeamSlug      *string                         `json:"parentTeamSlug,omitempty"`
 	Repositories        map[string]RepositoryPermission `json:"repositories,omitempty"`
 }
 
@@ -122,9 +122,9 @@ type NotificationSetting string
 
 const (
 	// team members receive notifications when the team is @mentioned.
-	Enabled NotificationSetting = "notifications_enabled"
+	Enabled NotificationSetting = "notificationsEnabled"
 	// no one receives notifications.
-	Disabled NotificationSetting = "notifications_disabled"
+	Disabled NotificationSetting = "notificationsDisabled"
 )
 
 // +kubebuilder:validation:Enum=admin;push;maintain;triage;pull
