@@ -10,8 +10,6 @@
 name: Publish image
 on:
   push:
-    branches:
-      - master
     tags:
       - 'v*'
 env:
@@ -32,7 +30,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.TOKEN_GHCR_PUBLISH }}
-      - name: Extract metadatsa (tags, labels)
+      - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@c314eea2b27e3cb3c7d7be0618510234d8f6178e
         with:
