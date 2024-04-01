@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,6 +44,7 @@ type OrganizationReconciler struct {
 	Scheme                   *runtime.Scheme
 	GitHubClient             OrganizationRequester
 	DeleteOnResourceDeletion bool
+	RequeueInterval          time.Duration
 }
 
 //+kubebuilder:rbac:groups=github.github-operator.eczy.io,resources=organizations,verbs=get;list;watch;create;update;patch;delete
@@ -106,7 +108,7 @@ func (r *OrganizationReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: r.RequeueInterval}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

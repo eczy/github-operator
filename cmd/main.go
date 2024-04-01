@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -57,6 +58,11 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var requeueInterval int
+	var teamRequeueInterval int
+	var repositoryRequeueInterval int
+	var organizationRequeueInterval int
+	var branchProtectionRequeueInterval int
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -70,7 +76,21 @@ func main() {
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
+	flag.IntVar(&requeueInterval, "requeue-interval", 0, "Requeue interval for all custom resources managed by this Manager in seconds. Resource-specific flags override this value.")
+	flag.IntVar(&teamRequeueInterval, "team-requeue-interval", 0, "Requeue interval for Team resources in seconds.")
+	flag.IntVar(&repositoryRequeueInterval, "repository-requeue-interval", 0, "Requeue interval for Repository resources in seconds.")
+	flag.IntVar(&organizationRequeueInterval, "organization-requeue-interval", 0, "Requeue interval for Organization resources in seconds.")
+	flag.IntVar(&branchProtectionRequeueInterval, "branch-protection-requeue-interval", 0, "Requeue interval for BranchProtection resources in seconds.")
 	flag.Parse()
+
+	// set resource-specific requeue intervals to the general requeue interval if they are not explicitly set
+	if requeueInterval != 0 {
+		for _, v := range []*int{&teamRequeueInterval, &repositoryRequeueInterval, &organizationRequeueInterval, &branchProtectionRequeueInterval} {
+			if *v == 0 {
+				v = &requeueInterval
+			}
+		}
+	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -129,33 +149,37 @@ func main() {
 	}
 
 	if err = (&controller.TeamReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		GitHubClient: ghClient,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		GitHubClient:    ghClient,
+		RequeueInterval: time.Duration(teamRequeueInterval) * time.Second,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Team")
 		os.Exit(1)
 	}
 	if err = (&controller.RepositoryReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		GitHubClient: ghClient,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		GitHubClient:    ghClient,
+		RequeueInterval: time.Duration(repositoryRequeueInterval) * time.Second,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Repository")
 		os.Exit(1)
 	}
 	if err = (&controller.OrganizationReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		GitHubClient: ghClient,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		GitHubClient:    ghClient,
+		RequeueInterval: time.Duration(organizationRequeueInterval) * time.Second,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Organization")
 		os.Exit(1)
 	}
 	if err = (&controller.BranchProtectionReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		GitHubClient: ghClient,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		GitHubClient:    ghClient,
+		RequeueInterval: time.Duration(branchProtectionRequeueInterval) * time.Second,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BranchProtection")
 		os.Exit(1)
