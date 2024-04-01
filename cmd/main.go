@@ -17,12 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"crypto/tls"
-	"errors"
 	"flag"
-	"log"
-	"net/http"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -126,28 +122,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx := context.Background()
-
-	var ghClient *gh.Client
-	instCreds, err0 := controller.GitHubInstallationCredentialsFromEnv()
-	oauthCreds, err1 := controller.GitHubOauthCredentialsFromEnv()
-	base := http.DefaultTransport
-	if err0 == nil {
-		c, err := controller.NewGitHubClientFromInstallationCredentials(ctx, *instCreds, base)
-		if err != nil {
-			setupLog.Error(err, "unable to create GitHub client from installation credentials")
-		}
-		ghClient = c
-	} else if err1 == nil {
-		c, err := controller.NewGitHubClientFromOauthCredentials(ctx, *oauthCreds, base)
-		if err != nil {
-			setupLog.Error(err, "unable to create GitHub client from oauth credentials")
-		}
-		ghClient = c
-	} else {
-		log.Fatal(errors.Join(err0, err1))
-	}
-
+	ghClient, err := gh.NewClient()
 	if err != nil {
 		setupLog.Error(err, "unable to create GitHub client")
 		os.Exit(1)
