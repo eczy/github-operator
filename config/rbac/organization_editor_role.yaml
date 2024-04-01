@@ -11,21 +11,21 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: organization-editor-role
 rules:
-- apiGroups:
-  - github.github-operator.eczy.io
-  resources:
-  - organizations
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - github.github-operator.eczy.io
-  resources:
-  - organizations/status
-  verbs:
-  - get
+  - apiGroups:
+      - github.github-operator.eczy.io
+    resources:
+      - organizations
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - github.github-operator.eczy.io
+    resources:
+      - organizations/status
+    verbs:
+      - get

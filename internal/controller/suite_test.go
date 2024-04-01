@@ -224,7 +224,7 @@ var _ = BeforeSuite(func() {
 		fmt.Fprintf(os.Stderr, "unable to load GitHub creds: %v\n", errors.Join(err0, err1))
 		fmt.Fprint(os.Stderr, "continuing in replay only mode\n")
 		recorderMode = recorder.ModeReplayOnly
-		c, err := gh.NewClient()
+		c, err := gh.NewClient(gh.WithRoundTripper(vcrRecorder))
 		Expect(err).NotTo(HaveOccurred())
 		ghClient = c
 	}
