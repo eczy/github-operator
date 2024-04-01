@@ -16,7 +16,9 @@ By representing GitHub resources as Kubernetes resources, GitHub Operator lets u
 If you would like a new resource to be supported, please open an issue.
 
 ## Usage
-TODO
+The container running the Manager must have the following environment variables set:
+
+- `
 
 ## License
 
