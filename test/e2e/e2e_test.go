@@ -31,9 +31,6 @@ import (
 	"github.com/eczy/github-operator/test/utils"
 )
 
-// TODO: these tests could be cleaned up considerably if we move common functionality
-// to the utils package
-
 const namespace = "github-operator-system"
 
 var _ = Describe("controller", Ordered, func() {
