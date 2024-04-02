@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -116,15 +117,17 @@ func LoadImageToKindClusterWithName(name string) error {
 }
 
 // LoadImageToKindCluster loads a local docker image to the kind cluster
-func LoadPodmanImageToKindClusterWithName(name string) error {
+func LoadPodmanImageToKindClusterWithName(name string) (err error) {
 	imgPath := ".e2e-test-image.tar"
 	podmanOptions := []string{"save", name, "-o", imgPath}
 	cmd := exec.Command("podman", podmanOptions...)
-	_, err := Run(cmd)
+	_, err = Run(cmd)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(imgPath)
+	defer func() {
+		err = errors.Join(err, os.Remove(imgPath))
+	}()
 
 	cluster := "kind"
 	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
