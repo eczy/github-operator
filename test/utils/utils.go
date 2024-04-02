@@ -17,6 +17,8 @@ limitations under the License.
 package utils
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -161,4 +163,42 @@ func GetProjectDir() (string, error) {
 	}
 	wd = strings.Replace(wd, "/test/e2e", "", -1)
 	return wd, nil
+}
+
+func GetField(namespace, kind, name, jsonPath string) (string, error) {
+	cmd := exec.Command("kubectl", "get", "-n", namespace, kind, name, fmt.Sprintf("-o=jsonpath=%s", jsonPath))
+	output, err := Run(cmd)
+	return string(output), err
+}
+
+func Patch(namespace, kind, name, patch string) error {
+	cmd := exec.Command("kubectl", "patch", "-n", namespace, kind, name, "--type=json", "-p", patch)
+	_, err := Run(cmd)
+	return err
+}
+
+func Apply(namespace string, object map[string]interface{}) error {
+	cmd := exec.Command("kubectl", "apply", "-n", namespace, "-f", "-")
+	objJson, err := json.Marshal(object)
+	if err != nil {
+		return err
+	}
+	cmd.Stdin = bytes.NewBuffer(objJson)
+	if _, err := Run(cmd); err != nil {
+		return err
+	}
+	return nil
+}
+
+func Delete(namespace string, object map[string]interface{}) error {
+	cmd := exec.Command("kubectl", "delete", "-n", namespace, "-f", "-")
+	objJson, err := json.Marshal(object)
+	if err != nil {
+		return err
+	}
+	cmd.Stdin = bytes.NewBuffer(objJson)
+	if _, err := Run(cmd); err != nil {
+		return err
+	}
+	return nil
 }

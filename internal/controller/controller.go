@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -45,6 +46,7 @@ type GitHubOauthCredentials struct {
 
 func GitHubInstallationCredentialsFromEnv() (*GitHubInstallationCredentials, error) {
 	creds := &GitHubInstallationCredentials{}
+	errs := []error{}
 	appId, ok := os.LookupEnv("GITHUB_APP_ID")
 	if ok {
 		value, err := strconv.ParseInt(appId, 10, 64)
@@ -53,7 +55,7 @@ func GitHubInstallationCredentialsFromEnv() (*GitHubInstallationCredentials, err
 		}
 		creds.AppId = value
 	} else {
-		return nil, fmt.Errorf("env var GITHUB_APP_ID not found")
+		errs = append(errs, fmt.Errorf("env var GITHUB_APP_ID not found"))
 	}
 	instId, ok := os.LookupEnv("GITHUB_INSTALLATION_ID")
 	if ok {
@@ -63,15 +65,15 @@ func GitHubInstallationCredentialsFromEnv() (*GitHubInstallationCredentials, err
 		}
 		creds.InstallationId = value
 	} else {
-		return nil, fmt.Errorf("env var GITHUB_INSTALLATION_ID not found")
+		errs = append(errs, fmt.Errorf("env var GITHUB_INSTALLATION_ID not found"))
 	}
 	pKey, ok := os.LookupEnv("GITHUB_PRIVATE_KEY")
 	if ok {
 		creds.PrivateKey = []byte(pKey)
 	} else {
-		return nil, fmt.Errorf("env var GITHUB_PRIVATE_KEY not found")
+		errs = append(errs, fmt.Errorf("env var GITHUB_PRIVATE_KEY not found"))
 	}
-	return creds, nil
+	return creds, errors.Join(errs...)
 }
 
 func GitHubOauthCredentialsFromEnv() (*GitHubOauthCredentials, error) {
