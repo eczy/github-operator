@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -47,6 +46,7 @@ import (
 
 	githubv1alpha1 "github.com/eczy/github-operator/api/v1alpha1"
 	gh "github.com/eczy/github-operator/internal/github" //+kubebuilder:scaffold:imports
+	"github.com/eczy/github-operator/internal/utils"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -144,8 +144,6 @@ var _ = BeforeSuite(func() {
 
 	ctx := context.Background()
 
-	instCreds, err0 := GitHubInstallationCredentialsFromEnv()
-	oauthCreds, err1 := GitHubOauthCredentialsFromEnv()
 	base := http.DefaultTransport
 	rec, err := gh.RecorderRoundTripper(ctx, base, &recorder.Options{
 		CassetteName:       cassetteName,
@@ -229,23 +227,9 @@ var _ = BeforeSuite(func() {
 		return reflect.DeepEqual(r1Body, r2Body)
 	})
 	vcrRecorder = rec
-	if err0 == nil {
-		c, err := NewGitHubClientFromInstallationCredentials(ctx, *instCreds, vcrRecorder)
-		Expect(err).NotTo(HaveOccurred())
-		ghClient = c
-	} else if err1 == nil {
-		c, err := NewGitHubClientFromOauthCredentials(ctx, *oauthCreds, vcrRecorder)
-		Expect(err).NotTo(HaveOccurred())
-		ghClient = c
-	} else if lowerMode == "replay-only" {
-		fmt.Fprintf(os.Stderr, "no GitHub credentials found; continuing in 'replay-only' mode\n")
-		c, err := gh.NewClient(gh.WithRoundTripper(vcrRecorder))
-		Expect(err).NotTo(HaveOccurred())
-		ghClient = c
-	} else {
-		fmt.Fprintf(os.Stderr, "no GitHub credentials found; set credential env vars or run in 'replay-only' mode\n")
-		log.Fatal(errors.Join(err0, err1))
-	}
+	c, err := utils.GitHubClientFromEnv(ctx, vcrRecorder)
+	Expect(err).NotTo(HaveOccurred())
+	ghClient = c
 })
 
 var _ = AfterSuite(func() {

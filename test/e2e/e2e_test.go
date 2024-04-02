@@ -26,7 +26,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/eczy/github-operator/internal/controller"
+	apputils "github.com/eczy/github-operator/internal/utils"
+
 	"github.com/eczy/github-operator/test/utils"
 )
 
@@ -61,8 +62,26 @@ var _ = Describe("controller", Ordered, func() {
 	})
 
 	Context("Operator", func() {
+
+		testOrg, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
+		Expect(ok).To(BeTrue(), "GITHUB_OPERATOR_TEST_ORG is required for this test")
+
+		var credentialEnvVars []string
+		appCreds, appErr := apputils.LookupEnvVarsError("GITHUB_APP_ID", "GITHUB_INSTALLATION_ID", "GITHUB_PRIVATE_KEY")
+		oauthCreds, oauthErr := apputils.LookupEnvVarsError("GITHUB_TOKEN")
+		if appErr == nil {
+			credentialEnvVars = []string{
+				fmt.Sprintf("GITHUB_APP_ID=%s", appCreds["GITHUB_APP_ID"]),
+				fmt.Sprintf("GITHUB_INSTALLATION_ID=%s", appCreds["GITHUB_INSTALLATION_ID"]),
+				fmt.Sprintf("GITHUB_PRIVATE_KEY=%s", appCreds["GITHUB_PRIVATE_KEY"]),
+			}
+		} else if oauthErr == nil {
+			credentialEnvVars = []string{fmt.Sprintf("GITHUB_TOKEN=%s", oauthCreds["GITHUB_TOKEN"])}
+		} else {
+			Expect(errors.Join(appErr, oauthErr)).To(BeNil(), "valid GitHub credentials required for this test")
+		}
+
 		It("should run successfully", func() {
-			var controllerPodName string
 			var err error
 
 			containerTool := "podman"
@@ -98,66 +117,14 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("validating that the controller-manager pod is running as expected")
-			verifyControllerUp := func() error {
-				// Get pod name
-
-				cmd = exec.Command("kubectl", "get",
-					"pods", "-l", "control-plane=controller-manager",
-					"-o", "go-template={{ range .items }}"+
-						"{{ if not .metadata.deletionTimestamp }}"+
-						"{{ .metadata.name }}"+
-						"{{ \"\\n\" }}{{ end }}{{ end }}",
-					"-n", namespace,
-				)
-
-				podOutput, err := utils.Run(cmd)
-				ExpectWithOffset(2, err).NotTo(HaveOccurred())
-				podNames := utils.GetNonEmptyLines(string(podOutput))
-				if len(podNames) != 1 {
-					return fmt.Errorf("expect 1 controller pods running, but got %d", len(podNames))
-				}
-				controllerPodName = podNames[0]
-				ExpectWithOffset(2, controllerPodName).Should(ContainSubstring("controller-manager"))
-
-				// Validate pod status
-				cmd = exec.Command("kubectl", "get",
-					"pods", controllerPodName, "-o", "jsonpath={.status.phase}",
-					"-n", namespace,
-				)
-				status, err := utils.Run(cmd)
-				ExpectWithOffset(2, err).NotTo(HaveOccurred())
-				if string(status) != "Running" {
-					return fmt.Errorf("controller pod in %s status", status)
-				}
-				return nil
-			}
-			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
+			EventuallyWithOffset(1, func() error { return utils.VerifyPodUp(namespace, "controller-manager") }, time.Minute, time.Second).Should(Succeed())
 		})
 		It("should manage the full lifecycle of a Team", func() {
-			var controllerPodName string
 			var err error
 
 			containerTool := "podman"
 			if v, ok := os.LookupEnv("CONAINER_TOOL"); ok {
 				containerTool = v
-			}
-
-			testOrg, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
-			Expect(ok).To(BeTrue(), "this text expects GITHUB_OPERATOR_TEST_ORG to be set")
-
-			var credEnvVars []string
-			instCreds, err0 := controller.GitHubInstallationCredentialsFromEnv()
-			oauthCreds, err1 := controller.GitHubOauthCredentialsFromEnv()
-			if err0 == nil {
-				credEnvVars = []string{
-					fmt.Sprintf("GITHUB_APP_ID=%d", instCreds.AppId),
-					fmt.Sprintf("GITHUB_INSTALLATION_ID=%d", instCreds.InstallationId),
-					fmt.Sprintf("GITHUB_PRIVATE_KEY=%s", instCreds.PrivateKey),
-				}
-			} else if err1 == nil {
-				credEnvVars = []string{fmt.Sprintf("GITHUB_TOKEN=%s", oauthCreds.OAuthToken)}
-			} else {
-				Expect(errors.Join(err0, err1)).To(BeNil(), "valid GitHub credentials required for this test")
 			}
 
 			// projectimage stores the name of the image used in the example
@@ -192,39 +159,17 @@ var _ = Describe("controller", Ordered, func() {
 			kubectlArgs := []string{
 				"set", "env", "-n", namespace, "deployment/github-operator-controller-manager",
 			}
-			kubectlArgs = append(kubectlArgs, credEnvVars...)
+			kubectlArgs = append(kubectlArgs, credentialEnvVars...)
 			cmd = exec.Command("kubectl", kubectlArgs...)
 			err = cmd.Run() // use raw 'Run' since we have a secret in args
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 			err = utils.Patch(namespace, "deployment", "github-operator-controller-manager", `
 [{"op": "add", "path": "/spec/template/spec/containers/1/args/-", "value": "--delete-on-resource-deletion"}]
 `)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("validating that the controller-manager pod is running as expected")
-			verifyControllerUp := func() error {
-				// Get pod name
-
-				cmd = exec.Command("kubectl", "get",
-					"pods", "-l", "control-plane=controller-manager",
-					"-o", "go-template={{ range .items }}"+
-						"{{ if not .metadata.deletionTimestamp }}"+
-						"{{ .metadata.name }}"+
-						"{{ \"\\n\" }}{{ end }}{{ end }}",
-					"-n", namespace,
-				)
-
-				podOutput, err := utils.Run(cmd)
-				ExpectWithOffset(2, err).NotTo(HaveOccurred())
-				podNames := utils.GetNonEmptyLines(string(podOutput))
-				if len(podNames) != 1 {
-					return fmt.Errorf("expect 1 controller pods running, but got %d", len(podNames))
-				}
-				controllerPodName = podNames[0]
-				ExpectWithOffset(2, controllerPodName).Should(ContainSubstring("controller-manager"))
-				return nil
-			}
-			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			EventuallyWithOffset(1, func() error { return utils.VerifyPodUp(namespace, "controller-manager") }, time.Minute, time.Second).Should(Succeed())
 
 			By("creating a Team resource")
 			err = utils.Apply(namespace, map[string]interface{}{
@@ -285,30 +230,11 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		})
 		It("should manage the full lifecycle of a Repository", func() {
-			var controllerPodName string
 			var err error
 
 			containerTool := "podman"
 			if v, ok := os.LookupEnv("CONAINER_TOOL"); ok {
 				containerTool = v
-			}
-
-			testOrg, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
-			Expect(ok).To(BeTrue(), "this text expects GITHUB_OPERATOR_TEST_ORG to be set")
-
-			var credEnvVars []string
-			instCreds, err0 := controller.GitHubInstallationCredentialsFromEnv()
-			oauthCreds, err1 := controller.GitHubOauthCredentialsFromEnv()
-			if err0 == nil {
-				credEnvVars = []string{
-					fmt.Sprintf("GITHUB_APP_ID=%d", instCreds.AppId),
-					fmt.Sprintf("GITHUB_INSTALLATION_ID=%d", instCreds.InstallationId),
-					fmt.Sprintf("GITHUB_PRIVATE_KEY=%s", instCreds.PrivateKey),
-				}
-			} else if err1 == nil {
-				credEnvVars = []string{fmt.Sprintf("GITHUB_TOKEN=%s", oauthCreds.OAuthToken)}
-			} else {
-				Expect(errors.Join(err0, err1)).To(BeNil(), "valid GitHub credentials required for this test")
 			}
 
 			// projectimage stores the name of the image used in the example
@@ -343,7 +269,7 @@ var _ = Describe("controller", Ordered, func() {
 			kubectlArgs := []string{
 				"set", "env", "-n", namespace, "deployment/github-operator-controller-manager",
 			}
-			kubectlArgs = append(kubectlArgs, credEnvVars...)
+			kubectlArgs = append(kubectlArgs, credentialEnvVars...)
 			cmd = exec.Command("kubectl", kubectlArgs...)
 			err = cmd.Run() // use raw 'Run' since we have a secret in args
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
@@ -353,29 +279,7 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("validating that the controller-manager pod is running as expected")
-			verifyControllerUp := func() error {
-				// Get pod name
-
-				cmd = exec.Command("kubectl", "get",
-					"pods", "-l", "control-plane=controller-manager",
-					"-o", "go-template={{ range .items }}"+
-						"{{ if not .metadata.deletionTimestamp }}"+
-						"{{ .metadata.name }}"+
-						"{{ \"\\n\" }}{{ end }}{{ end }}",
-					"-n", namespace,
-				)
-
-				podOutput, err := utils.Run(cmd)
-				ExpectWithOffset(2, err).NotTo(HaveOccurred())
-				podNames := utils.GetNonEmptyLines(string(podOutput))
-				if len(podNames) != 1 {
-					return fmt.Errorf("expect 1 controller pods running, but got %d", len(podNames))
-				}
-				controllerPodName = podNames[0]
-				ExpectWithOffset(2, controllerPodName).Should(ContainSubstring("controller-manager"))
-				return nil
-			}
-			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
+			EventuallyWithOffset(1, func() error { return utils.VerifyPodUp(namespace, "controller-manager") }, time.Minute, time.Second).Should(Succeed())
 
 			By("creating a Repository resource")
 			err = utils.Apply(namespace, map[string]interface{}{

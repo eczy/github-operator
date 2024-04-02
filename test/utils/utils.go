@@ -165,6 +165,44 @@ func GetProjectDir() (string, error) {
 	return wd, nil
 }
 
+func VerifyPodUp(namespace, name string) error {
+	cmd := exec.Command("kubectl", "get",
+		"pods", "-l", fmt.Sprintf("control-plane=%s", name),
+		"-o", "go-template={{ range .items }}"+
+			"{{ if not .metadata.deletionTimestamp }}"+
+			"{{ .metadata.name }}"+
+			"{{ \"\\n\" }}{{ end }}{{ end }}",
+		"-n", namespace,
+	)
+
+	podOutput, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	podNames := GetNonEmptyLines(string(podOutput))
+	if len(podNames) != 1 {
+		return fmt.Errorf("expect 1 controller pods running, but got %d", len(podNames))
+	}
+	controllerPodName := podNames[0]
+	if !strings.Contains(controllerPodName, name) {
+		return fmt.Errorf("'%s' should contain '%s'", controllerPodName, name)
+	}
+
+	// Validate pod status
+	cmd = exec.Command("kubectl", "get",
+		"pods", controllerPodName, "-o", "jsonpath={.status.phase}",
+		"-n", namespace,
+	)
+	status, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	if string(status) != "Running" {
+		return fmt.Errorf("controller pod in %s status", status)
+	}
+	return nil
+}
+
 func GetField(namespace, kind, name, jsonPath string) (string, error) {
 	cmd := exec.Command("kubectl", "get", "-n", namespace, kind, name, fmt.Sprintf("-o=jsonpath=%s", jsonPath))
 	output, err := Run(cmd)
@@ -201,4 +239,20 @@ func Delete(namespace string, object map[string]interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func LoadEnvVarsError(names ...string) (map[string]string, error) {
+	varMap := map[string]string{}
+	notSet := []string{}
+	for _, name := range names {
+		if v, ok := os.LookupEnv(name); ok {
+			varMap[name] = v
+		} else {
+			notSet = append(notSet, name)
+		}
+	}
+	if len(notSet) > 0 {
+		return nil, fmt.Errorf("expected env vars to be set: %v", notSet)
+	}
+	return varMap, nil
 }
