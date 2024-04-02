@@ -11,7 +11,7 @@
 **Build and push your image to the location specified by `IMG`:**
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/github-operator:tag
+make docker-build docker-push IMG=ghcr.io/eczy/github-operator:v0.0.1
 ```
 
 **NOTE:** This image ought to be published in the personal registry you specified. 
@@ -27,7 +27,7 @@ make install
 **Deploy the Manager to the cluster with the image specified by `IMG`:**
 
 ```sh
-make deploy IMG=<some-registry>/github-operator:tag
+make deploy IMG=ghcr.io/eczy/github-operator:v0.0.1
 ```
 
 > **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin 
@@ -68,7 +68,7 @@ Following are the steps to build the installer and distribute this project to us
 1. Build the installer for the image built and published in the registry:
 
 ```sh
-make build-installer IMG=<some-registry>/github-operator:tag
+make build-installer IMG=ghcr.io/eczy/github-operator:v0.0.1
 ```
 
 NOTE: The makefile target mentioned above generates an 'install.yaml'
@@ -81,7 +81,7 @@ its dependencies.
 Users can just run kubectl apply -f <URL for YAML BUNDLE> to install the project, i.e.:
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/github-operator/<tag or branch>/dist/install.yaml
+kubectl apply -f https://raw.githubusercontent.com/eczy/github-operator/v0.0.1/dist/install.yaml
 ```
 
 ## Contributing
