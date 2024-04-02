@@ -62,9 +62,13 @@ var _ = Describe("controller", Ordered, func() {
 	})
 
 	Context("Operator", func() {
-
 		testOrg, ok := os.LookupEnv("GITHUB_OPERATOR_TEST_ORG")
 		Expect(ok).To(BeTrue(), "GITHUB_OPERATOR_TEST_ORG is required for this test")
+
+		containerTool := "podman"
+		if v, ok := os.LookupEnv("CONAINER_TOOL"); ok {
+			containerTool = v
+		}
 
 		var credentialEnvVars []string
 		appCreds, appErr := apputils.LookupEnvVarsError("GITHUB_APP_ID", "GITHUB_INSTALLATION_ID", "GITHUB_PRIVATE_KEY")
@@ -84,11 +88,6 @@ var _ = Describe("controller", Ordered, func() {
 		It("should run successfully", func() {
 			var err error
 
-			containerTool := "podman"
-			if v, ok := os.LookupEnv("CONAINER_TOOL"); ok {
-				containerTool = v
-			}
-
 			// projectimage stores the name of the image used in the example
 			var projectimage = "example.com/github-operator:v0.0.1"
 
@@ -117,42 +116,13 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("validating that the controller-manager pod is running as expected")
-			EventuallyWithOffset(1, func() error { return utils.VerifyPodUp(namespace, "controller-manager") }, time.Minute, time.Second).Should(Succeed())
+			EventuallyWithOffset(1, func() error {
+				return utils.VerifyPodUp(namespace, "controller-manager")
+			}, time.Minute, time.Second).Should(Succeed())
 		})
+		// nolint
 		It("should manage the full lifecycle of a Team", func() {
 			var err error
-
-			containerTool := "podman"
-			if v, ok := os.LookupEnv("CONAINER_TOOL"); ok {
-				containerTool = v
-			}
-
-			// projectimage stores the name of the image used in the example
-			var projectimage = "example.com/github-operator:v0.0.1"
-
-			By("building the manager(Operator) image")
-			cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage))
-			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-			By("loading the the manager(Operator) image on Kind")
-			if containerTool == "podman" {
-				err = utils.LoadPodmanImageToKindClusterWithName(projectimage)
-				ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			} else {
-				err = utils.LoadImageToKindClusterWithName(projectimage)
-				ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			}
-
-			By("installing CRDs")
-			cmd = exec.Command("make", "install")
-			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-			By("deploying the controller-manager")
-			cmd = exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", projectimage))
-			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			// TODO: configure the manager properly the first time instead of patching here
 			By("setting GitHub credentials for the manager")
@@ -160,7 +130,7 @@ var _ = Describe("controller", Ordered, func() {
 				"set", "env", "-n", namespace, "deployment/github-operator-controller-manager",
 			}
 			kubectlArgs = append(kubectlArgs, credentialEnvVars...)
-			cmd = exec.Command("kubectl", kubectlArgs...)
+			cmd := exec.Command("kubectl", kubectlArgs...)
 			err = cmd.Run() // use raw 'Run' since we have a secret in args
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 			err = utils.Patch(namespace, "deployment", "github-operator-controller-manager", `
@@ -169,7 +139,9 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("validating that the controller-manager pod is running as expected")
-			EventuallyWithOffset(1, func() error { return utils.VerifyPodUp(namespace, "controller-manager") }, time.Minute, time.Second).Should(Succeed())
+			EventuallyWithOffset(1, func() error {
+				return utils.VerifyPodUp(namespace, "controller-manager")
+			}, time.Minute, time.Second).Should(Succeed())
 
 			By("creating a Team resource")
 			err = utils.Apply(namespace, map[string]interface{}{
@@ -229,40 +201,9 @@ var _ = Describe("controller", Ordered, func() {
 			})
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		})
+		// nolint
 		It("should manage the full lifecycle of a Repository", func() {
 			var err error
-
-			containerTool := "podman"
-			if v, ok := os.LookupEnv("CONAINER_TOOL"); ok {
-				containerTool = v
-			}
-
-			// projectimage stores the name of the image used in the example
-			var projectimage = "example.com/github-operator:v0.0.1"
-
-			By("building the manager(Operator) image")
-			cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage))
-			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-			By("loading the the manager(Operator) image on Kind")
-			if containerTool == "podman" {
-				err = utils.LoadPodmanImageToKindClusterWithName(projectimage)
-				ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			} else {
-				err = utils.LoadImageToKindClusterWithName(projectimage)
-				ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			}
-
-			By("installing CRDs")
-			cmd = exec.Command("make", "install")
-			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-			By("deploying the controller-manager")
-			cmd = exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", projectimage))
-			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			// TODO: configure the manager properly the first time instead of patching here
 			By("setting GitHub credentials for the manager")
@@ -270,7 +211,7 @@ var _ = Describe("controller", Ordered, func() {
 				"set", "env", "-n", namespace, "deployment/github-operator-controller-manager",
 			}
 			kubectlArgs = append(kubectlArgs, credentialEnvVars...)
-			cmd = exec.Command("kubectl", kubectlArgs...)
+			cmd := exec.Command("kubectl", kubectlArgs...)
 			err = cmd.Run() // use raw 'Run' since we have a secret in args
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 			err = utils.Patch(namespace, "deployment", "github-operator-controller-manager", `
@@ -279,7 +220,9 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("validating that the controller-manager pod is running as expected")
-			EventuallyWithOffset(1, func() error { return utils.VerifyPodUp(namespace, "controller-manager") }, time.Minute, time.Second).Should(Succeed())
+			EventuallyWithOffset(1, func() error {
+				return utils.VerifyPodUp(namespace, "controller-manager")
+			}, time.Minute, time.Second).Should(Succeed())
 
 			By("creating a Repository resource")
 			err = utils.Apply(namespace, map[string]interface{}{

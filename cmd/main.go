@@ -79,7 +79,8 @@ func main() {
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
-	flag.BoolVar(&deleteOnResourceDeletion, "delete-on-resource-deletion", false, "Delete corresponding external resource when a resource is delete.")
+	flag.BoolVar(&deleteOnResourceDeletion, "delete-on-resource-deletion", false,
+		"Delete corresponding external resource when a resource is delete.")
 	flag.IntVar(&requeueInterval, "requeue-interval", 0,
 		"Requeue interval for all custom resources managed by this Manager in seconds. "+
 			"Resource-specific flags override this value.")

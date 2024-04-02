@@ -265,6 +265,7 @@ func LoadEnvVarsError(names ...string) (map[string]string, error) {
 	return varMap, nil
 }
 
+// nolint
 func GitHubRecorderRoundTripper(ctx context.Context, base http.RoundTripper, opts *recorder.Options) (*recorder.Recorder, error) {
 	r, err := recorder.NewWithOptions(opts)
 	if err != nil {
