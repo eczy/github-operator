@@ -10,16 +10,12 @@
 name: Publish image
 on:
   push:
-    tags:
-      - 'v*'
-    branches:
-      - master
+    tags: [v*]
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 jobs:
   build-and-push-image:
-    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: read
