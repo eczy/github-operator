@@ -17,13 +17,23 @@ limitations under the License.
 package utils
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"os"
 	"os/exec"
+	"path"
+	"reflect"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
+	"gopkg.in/dnaeon/go-vcr.v3/cassette"
+	"gopkg.in/dnaeon/go-vcr.v3/recorder"
 )
 
 const (
@@ -161,4 +171,179 @@ func GetProjectDir() (string, error) {
 	}
 	wd = strings.Replace(wd, "/test/e2e", "", -1)
 	return wd, nil
+}
+
+func VerifyPodUp(namespace, name string) error {
+	cmd := exec.Command("kubectl", "get",
+		"pods", "-l", fmt.Sprintf("control-plane=%s", name),
+		"-o", "go-template={{ range .items }}"+
+			"{{ if not .metadata.deletionTimestamp }}"+
+			"{{ .metadata.name }}"+
+			"{{ \"\\n\" }}{{ end }}{{ end }}",
+		"-n", namespace,
+	)
+
+	podOutput, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	podNames := GetNonEmptyLines(string(podOutput))
+	if len(podNames) != 1 {
+		return fmt.Errorf("expect 1 controller pods running, but got %d", len(podNames))
+	}
+	controllerPodName := podNames[0]
+	if !strings.Contains(controllerPodName, name) {
+		return fmt.Errorf("'%s' should contain '%s'", controllerPodName, name)
+	}
+
+	// Validate pod status
+	cmd = exec.Command("kubectl", "get",
+		"pods", controllerPodName, "-o", "jsonpath={.status.phase}",
+		"-n", namespace,
+	)
+	status, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	if string(status) != "Running" {
+		return fmt.Errorf("controller pod in %s status", status)
+	}
+	return nil
+}
+
+func GetField(namespace, kind, name, jsonPath string) (string, error) {
+	cmd := exec.Command("kubectl", "get", "-n", namespace, kind, name, fmt.Sprintf("-o=jsonpath=%s", jsonPath))
+	output, err := Run(cmd)
+	return string(output), err
+}
+
+func Patch(namespace, kind, name, patch string) error {
+	cmd := exec.Command("kubectl", "patch", "-n", namespace, kind, name, "--type=json", "-p", patch)
+	_, err := Run(cmd)
+	return err
+}
+
+func Apply(namespace string, object map[string]interface{}) error {
+	cmd := exec.Command("kubectl", "apply", "-n", namespace, "-f", "-")
+	objJson, err := json.Marshal(object)
+	if err != nil {
+		return err
+	}
+	cmd.Stdin = bytes.NewBuffer(objJson)
+	if _, err := Run(cmd); err != nil {
+		return err
+	}
+	return nil
+}
+
+func Delete(namespace string, object map[string]interface{}) error {
+	cmd := exec.Command("kubectl", "delete", "-n", namespace, "-f", "-")
+	objJson, err := json.Marshal(object)
+	if err != nil {
+		return err
+	}
+	cmd.Stdin = bytes.NewBuffer(objJson)
+	if _, err := Run(cmd); err != nil {
+		return err
+	}
+	return nil
+}
+
+func LoadEnvVarsError(names ...string) (map[string]string, error) {
+	varMap := map[string]string{}
+	notSet := []string{}
+	for _, name := range names {
+		if v, ok := os.LookupEnv(name); ok {
+			varMap[name] = v
+		} else {
+			notSet = append(notSet, name)
+		}
+	}
+	if len(notSet) > 0 {
+		return nil, fmt.Errorf("expected env vars to be set: %v", notSet)
+	}
+	return varMap, nil
+}
+
+// nolint
+func GitHubRecorderRoundTripper(ctx context.Context, base http.RoundTripper, opts *recorder.Options) (*recorder.Recorder, error) {
+	r, err := recorder.NewWithOptions(opts)
+	if err != nil {
+		return nil, err
+	}
+	rmSecretsHook := func(i *cassette.Interaction) error {
+		delete(i.Request.Headers, "Authorization")
+		if path.Base(i.Request.URL) == "access_tokens" {
+			var body map[string]interface{}
+			err := json.Unmarshal([]byte(i.Response.Body), &body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			body["token"] = ""
+			body["expires_at"] = ""
+			modified, err := json.Marshal(body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			i.Response.Body = string(modified)
+		}
+		return nil
+	}
+	r.AddHook(rmSecretsHook, recorder.BeforeSaveHook)
+	r.SetMatcher(func(r1 *http.Request, r2 cassette.Request) bool {
+		// Method
+		if r1.Method != r2.Method {
+			return false
+		}
+		if r1.Method == "" && r2.Method != "GET" {
+			// for client requests, "" means GET
+			return false
+		}
+		// URL
+		if r1.URL.String() != r2.URL {
+			return false
+		}
+		// Body (as JSON)
+		if r1.Body == nil && r2.Body == "" {
+			return true
+		}
+		if r1.Body != nil && r2.Body == "" {
+			return false
+		}
+		if r1.Body == nil && r2.Body != "" {
+			return false
+		}
+		r1BodyBytes, err := io.ReadAll(r1.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = r1.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		r1.Body = io.NopCloser(bytes.NewBuffer(r1BodyBytes))
+		if len(r1BodyBytes) == 0 && len(r2.Body) == 0 {
+			return true
+		}
+		if len(r1BodyBytes) == 0 && len(r2.Body) != 0 {
+			return false
+		}
+		if len(r1BodyBytes) != 0 && len(r2.Body) == 0 {
+			return false
+		}
+		// at this point both r1 and r2 have bodies
+		var r1Body interface{}
+		err = json.Unmarshal(r1BodyBytes, &r1Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		r2BodyBytes := []byte(r2.Body)
+		var r2Body interface{}
+		err = json.Unmarshal(r2BodyBytes, &r2Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return reflect.DeepEqual(r1Body, r2Body)
+	})
+	return r, nil
 }

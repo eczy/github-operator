@@ -41,7 +41,7 @@ type BranchProtectionSpec struct {
 	//+kubebuilder:validation:MinLength=1
 
 	// Identifies the protection rule pattern.
-	Pattern string `json:"branchPattern"`
+	Pattern string `json:"pattern"`
 
 	// Can this branch be deleted.
 	// +optional

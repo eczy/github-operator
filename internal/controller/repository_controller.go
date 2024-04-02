@@ -112,12 +112,12 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// if external resource does't exist and we aren't deleting the resource, create external resource
 	if observed == nil && repo.ObjectMeta.DeletionTimestamp.IsZero() {
-		ghTeam, err := r.createRepository(ctx, repo)
+		ghRepo, err := r.createRepository(ctx, repo)
 		if err != nil {
 			log.Error(err, "error creating GitHub repository")
 			return ctrl.Result{}, err
 		}
-		observed = ghTeam
+		observed = ghRepo
 	}
 
 	// handle finalizer

@@ -19,9 +19,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -41,7 +39,7 @@ import (
 
 	githubv1alpha1 "github.com/eczy/github-operator/api/v1alpha1"
 	"github.com/eczy/github-operator/internal/controller"
-	gh "github.com/eczy/github-operator/internal/github"
+	"github.com/eczy/github-operator/internal/utils"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -62,6 +60,7 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var deleteOnResourceDeletion bool
 	var requeueInterval int
 	var teamRequeueInterval int
 	var repositoryRequeueInterval int
@@ -80,6 +79,8 @@ func main() {
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
+	flag.BoolVar(&deleteOnResourceDeletion, "delete-on-resource-deletion", false,
+		"Delete corresponding external resource when a resource is delete.")
 	flag.IntVar(&requeueInterval, "requeue-interval", 0,
 		"Requeue interval for all custom resources managed by this Manager in seconds. "+
 			"Resource-specific flags override this value.")
@@ -160,58 +161,48 @@ func main() {
 
 	ctx := context.Background()
 
-	var ghClient *gh.Client
-	instCreds, err0 := controller.GitHubInstallationCredentialsFromEnv()
-	oauthCreds, err1 := controller.GitHubOauthCredentialsFromEnv()
-	base := http.DefaultTransport
-	if err0 == nil {
-		c, err := controller.NewGitHubClientFromInstallationCredentials(ctx, *instCreds, base)
-		if err != nil {
-			setupLog.Error(err, "unable to create GitHub client from installation credentials")
-		}
-		ghClient = c
-	} else if err1 == nil {
-		c, err := controller.NewGitHubClientFromOauthCredentials(ctx, *oauthCreds, base)
-		if err != nil {
-			setupLog.Error(err, "unable to create GitHub client from oauth credentials")
-		}
-		ghClient = c
-	} else {
-		log.Fatal(errors.Join(err0, err1))
+	ghClient, err := utils.GitHubClientFromEnv(ctx, http.DefaultTransport)
+	if err != nil {
+		setupLog.Error(err, "unable to create GitHub client")
+		os.Exit(1)
 	}
 
 	if err = (&controller.TeamReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		GitHubClient:    ghClient,
-		RequeueInterval: time.Duration(teamRequeueInterval) * time.Second,
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		GitHubClient:             ghClient,
+		DeleteOnResourceDeletion: deleteOnResourceDeletion,
+		RequeueInterval:          time.Duration(teamRequeueInterval) * time.Second,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Team")
 		os.Exit(1)
 	}
 	if err = (&controller.RepositoryReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		GitHubClient:    ghClient,
-		RequeueInterval: time.Duration(repositoryRequeueInterval) * time.Second,
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		GitHubClient:             ghClient,
+		DeleteOnResourceDeletion: deleteOnResourceDeletion,
+		RequeueInterval:          time.Duration(repositoryRequeueInterval) * time.Second,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Repository")
 		os.Exit(1)
 	}
 	if err = (&controller.OrganizationReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		GitHubClient:    ghClient,
-		RequeueInterval: time.Duration(organizationRequeueInterval) * time.Second,
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		GitHubClient:             ghClient,
+		DeleteOnResourceDeletion: deleteOnResourceDeletion,
+		RequeueInterval:          time.Duration(organizationRequeueInterval) * time.Second,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Organization")
 		os.Exit(1)
 	}
 	if err = (&controller.BranchProtectionReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		GitHubClient:    ghClient,
-		RequeueInterval: time.Duration(branchProtectionRequeueInterval) * time.Second,
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		GitHubClient:             ghClient,
+		DeleteOnResourceDeletion: deleteOnResourceDeletion,
+		RequeueInterval:          time.Duration(branchProtectionRequeueInterval) * time.Second,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BranchProtection")
 		os.Exit(1)

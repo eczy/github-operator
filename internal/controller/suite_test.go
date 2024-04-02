@@ -17,25 +17,18 @@ limitations under the License.
 package controller
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"gopkg.in/dnaeon/go-vcr.v3/cassette"
 	"gopkg.in/dnaeon/go-vcr.v3/recorder"
 
 	"k8s.io/client-go/kubernetes/scheme"
@@ -45,8 +38,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	githubv1alpha1 "github.com/eczy/github-operator/api/v1alpha1"
-	gh "github.com/eczy/github-operator/internal/github" //+kubebuilder:scaffold:imports
+	githubv1alpha1 "github.com/eczy/github-operator/api/v1alpha1" //+kubebuilder:scaffold:imports
+	gh "github.com/eczy/github-operator/internal/github"
+	"github.com/eczy/github-operator/internal/utils"
+
+	testutils "github.com/eczy/github-operator/test/utils"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -143,108 +139,27 @@ var _ = BeforeSuite(func() {
 	}
 
 	ctx := context.Background()
-
-	instCreds, err0 := GitHubInstallationCredentialsFromEnv()
-	oauthCreds, err1 := GitHubOauthCredentialsFromEnv()
 	base := http.DefaultTransport
-	rec, err := gh.RecorderRoundTripper(ctx, base, &recorder.Options{
+	rec, err := testutils.GitHubRecorderRoundTripper(ctx, base, &recorder.Options{
 		CassetteName:       cassetteName,
 		Mode:               recorderMode,
 		RealTransport:      http.DefaultTransport,
 		SkipRequestLatency: true,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	rmSecretsHook := func(i *cassette.Interaction) error {
-		delete(i.Request.Headers, "Authorization")
-		if path.Base(i.Request.URL) == "access_tokens" {
-			var body map[string]interface{}
-			err := json.Unmarshal([]byte(i.Response.Body), &body)
-			if err != nil {
-				log.Fatal(err)
-			}
-			body["token"] = ""
-			body["expires_at"] = ""
-			modified, err := json.Marshal(body)
-			if err != nil {
-				log.Fatal(err)
-			}
-			i.Response.Body = string(modified)
-		}
-		return nil
-	}
-	rec.AddHook(rmSecretsHook, recorder.BeforeSaveHook)
-	rec.SetMatcher(func(r1 *http.Request, r2 cassette.Request) bool {
-		// Method
-		if r1.Method != r2.Method {
-			return false
-		}
-		if r1.Method == "" && r2.Method != "GET" {
-			// for client requests, "" means GET
-			return false
-		}
-		// URL
-		if r1.URL.String() != r2.URL {
-			return false
-		}
-		// Body (as JSON)
-		if r1.Body == nil && r2.Body == "" {
-			return true
-		}
-		if r1.Body != nil && r2.Body == "" {
-			return false
-		}
-		if r1.Body == nil && r2.Body != "" {
-			return false
-		}
-		r1BodyBytes, err := io.ReadAll(r1.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = r1.Body.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-		r1.Body = io.NopCloser(bytes.NewBuffer(r1BodyBytes))
-		if len(r1BodyBytes) == 0 && len(r2.Body) == 0 {
-			return true
-		}
-		if len(r1BodyBytes) == 0 && len(r2.Body) != 0 {
-			return false
-		}
-		if len(r1BodyBytes) != 0 && len(r2.Body) == 0 {
-			return false
-		}
-		// at this point both r1 and r2 have bodies
-		var r1Body interface{}
-		err = json.Unmarshal(r1BodyBytes, &r1Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		r2BodyBytes := []byte(r2.Body)
-		var r2Body interface{}
-		err = json.Unmarshal(r2BodyBytes, &r2Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		return reflect.DeepEqual(r1Body, r2Body)
-	})
 	vcrRecorder = rec
-	if err0 == nil {
-		c, err := NewGitHubClientFromInstallationCredentials(ctx, *instCreds, vcrRecorder)
-		Expect(err).NotTo(HaveOccurred())
-		ghClient = c
-	} else if err1 == nil {
-		c, err := NewGitHubClientFromOauthCredentials(ctx, *oauthCreds, vcrRecorder)
-		Expect(err).NotTo(HaveOccurred())
-		ghClient = c
-	} else if lowerMode == "replay-only" {
-		fmt.Fprintf(os.Stderr, "no GitHub credentials found; continuing in 'replay-only' mode\n")
-		c, err := gh.NewClient(gh.WithRoundTripper(vcrRecorder))
-		Expect(err).NotTo(HaveOccurred())
-		ghClient = c
+	c, err := utils.GitHubClientFromEnv(ctx, vcrRecorder)
+	if err != nil {
+		if lowerMode == "replay-only" {
+			// continue in replay mode
+			c, err := gh.NewClient(gh.WithRoundTripper(vcrRecorder))
+			Expect(err).NotTo(HaveOccurred())
+			ghClient = c
+		} else {
+			Fail("no GitHub credentials found; pass credentials or run in 'replay-only' mode")
+		}
 	} else {
-		fmt.Fprintf(os.Stderr, "no GitHub credentials found; set credential env vars or run in 'replay-only' mode\n")
-		log.Fatal(errors.Join(err0, err1))
+		ghClient = c
 	}
 })
 
