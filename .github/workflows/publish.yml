@@ -12,6 +12,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - master
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
