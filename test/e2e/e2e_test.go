@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 
@@ -59,6 +60,11 @@ var _ = Describe("controller", Ordered, func() {
 			var controllerPodName string
 			var err error
 
+			containerTool := "podman"
+			if v, ok := os.LookupEnv("CONAINER_TOOL"); ok {
+				containerTool = v
+			}
+
 			// projectimage stores the name of the image used in the example
 			var projectimage = "example.com/github-operator:v0.0.1"
 
@@ -68,8 +74,13 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("loading the the manager(Operator) image on Kind")
-			err = utils.LoadImageToKindClusterWithName(projectimage)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			if containerTool == "podman" {
+				err = utils.LoadPodmanImageToKindClusterWithName(projectimage)
+				ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			} else {
+				err = utils.LoadImageToKindClusterWithName(projectimage)
+				ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			}
 
 			By("installing CRDs")
 			cmd = exec.Command("make", "install")
@@ -116,7 +127,6 @@ var _ = Describe("controller", Ordered, func() {
 				return nil
 			}
 			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
-
 		})
 	})
 })
