@@ -18,14 +18,22 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"os"
 	"os/exec"
+	"path"
+	"reflect"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
+	"gopkg.in/dnaeon/go-vcr.v3/cassette"
+	"gopkg.in/dnaeon/go-vcr.v3/recorder"
 )
 
 const (
@@ -255,4 +263,86 @@ func LoadEnvVarsError(names ...string) (map[string]string, error) {
 		return nil, fmt.Errorf("expected env vars to be set: %v", notSet)
 	}
 	return varMap, nil
+}
+
+func GitHubRecorderRoundTripper(ctx context.Context, base http.RoundTripper, opts *recorder.Options) (*recorder.Recorder, error) {
+	r, err := recorder.NewWithOptions(opts)
+	if err != nil {
+		return nil, err
+	}
+	rmSecretsHook := func(i *cassette.Interaction) error {
+		delete(i.Request.Headers, "Authorization")
+		if path.Base(i.Request.URL) == "access_tokens" {
+			var body map[string]interface{}
+			err := json.Unmarshal([]byte(i.Response.Body), &body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			body["token"] = ""
+			body["expires_at"] = ""
+			modified, err := json.Marshal(body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			i.Response.Body = string(modified)
+		}
+		return nil
+	}
+	r.AddHook(rmSecretsHook, recorder.BeforeSaveHook)
+	r.SetMatcher(func(r1 *http.Request, r2 cassette.Request) bool {
+		// Method
+		if r1.Method != r2.Method {
+			return false
+		}
+		if r1.Method == "" && r2.Method != "GET" {
+			// for client requests, "" means GET
+			return false
+		}
+		// URL
+		if r1.URL.String() != r2.URL {
+			return false
+		}
+		// Body (as JSON)
+		if r1.Body == nil && r2.Body == "" {
+			return true
+		}
+		if r1.Body != nil && r2.Body == "" {
+			return false
+		}
+		if r1.Body == nil && r2.Body != "" {
+			return false
+		}
+		r1BodyBytes, err := io.ReadAll(r1.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = r1.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		r1.Body = io.NopCloser(bytes.NewBuffer(r1BodyBytes))
+		if len(r1BodyBytes) == 0 && len(r2.Body) == 0 {
+			return true
+		}
+		if len(r1BodyBytes) == 0 && len(r2.Body) != 0 {
+			return false
+		}
+		if len(r1BodyBytes) != 0 && len(r2.Body) == 0 {
+			return false
+		}
+		// at this point both r1 and r2 have bodies
+		var r1Body interface{}
+		err = json.Unmarshal(r1BodyBytes, &r1Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		r2BodyBytes := []byte(r2.Body)
+		var r2Body interface{}
+		err = json.Unmarshal(r2BodyBytes, &r2Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return reflect.DeepEqual(r1Body, r2Body)
+	})
+	return r, nil
 }

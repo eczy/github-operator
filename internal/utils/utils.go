@@ -28,7 +28,7 @@ func LookupEnvVarsError(names ...string) (map[string]string, error) {
 }
 
 func GitHubClientFromEnv(ctx context.Context, base http.RoundTripper) (*gh.Client, error) {
-	appCreds, appErr := LookupEnvVarsError("GITHUB_APP_ID", "GTIHUB_INSTALLATION_ID", "GITHUB_PRIVATE_KEY")
+	appCreds, appErr := LookupEnvVarsError("GITHUB_APP_ID", "GITHUB_INSTALLATION_ID", "GITHUB_PRIVATE_KEY")
 	oauthCreds, oauthErr := LookupEnvVarsError("GITHUB_TOKEN")
 	if appErr == nil {
 		appId, err := strconv.ParseInt(appCreds["GITHUB_APP_ID"], 10, 64)
@@ -48,7 +48,7 @@ func GitHubClientFromEnv(ctx context.Context, base http.RoundTripper) (*gh.Clien
 			return nil, err
 		}
 		return gh.NewClient(gh.WithRoundTripper(tr))
-	} else if oauthErr != nil {
+	} else if oauthErr == nil {
 		tr, err := gh.AuthRoundTripperFromToken(ctx, base, oauthCreds["GITHUB_TOKEN"])
 		if err != nil {
 			return nil, err

@@ -163,6 +163,7 @@ func main() {
 	ghClient, err := utils.GitHubClientFromEnv(ctx, http.DefaultTransport)
 	if err != nil {
 		setupLog.Error(err, "unable to create GitHub client")
+		os.Exit(1)
 	}
 
 	if err = (&controller.TeamReconciler{

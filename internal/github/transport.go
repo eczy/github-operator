@@ -23,7 +23,6 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"golang.org/x/oauth2"
-	"gopkg.in/dnaeon/go-vcr.v3/recorder"
 )
 
 func AuthRoundTripperFromToken(ctx context.Context, base http.RoundTripper, token string) (http.RoundTripper, error) {
@@ -51,12 +50,4 @@ func RateLimitRoundTripper(ctx context.Context, base http.RoundTripper, opts ...
 		return nil, err
 	}
 	return tr, nil
-}
-
-func RecorderRoundTripper(ctx context.Context, base http.RoundTripper, opts *recorder.Options) (*recorder.Recorder, error) {
-	r, err := recorder.NewWithOptions(opts)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
 }
