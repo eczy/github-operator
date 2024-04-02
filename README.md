@@ -15,6 +15,13 @@ By representing GitHub resources as Kubernetes resources, GitHub Operator lets u
 
 If you would like a new resource to be supported, please open an issue.
 
+## Install
+
+To install using the installer included in this repository,
+```sh
+kubectl apply -f https://raw.githubusercontent.com/eczy/github-operator/v0.0.1/dist/install.yaml
+```
+
 ## Usage
 TODO
 
