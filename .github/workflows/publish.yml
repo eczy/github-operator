@@ -10,10 +10,9 @@
 name: Publish image
 on:
   push:
-    tags:
-      - 'v*'
-    branches:
-      - master
+    tags: [ v* ] 
+    branches: [ '*' ]
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
