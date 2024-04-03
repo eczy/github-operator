@@ -29,6 +29,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Create k8s Kind Cluster
         uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -40,6 +42,7 @@ jobs:
           GITHUB_APP_ID: ${{ secrets.TEST_RUNNER_APP_ID }}
           GITHUB_INSTALLATION_ID: ${{ secrets.TEST_RUNNER_INSTALLATION_ID }}
           GITHUB_PRIVATE_KEY: ${{ secrets.TEST_RUNNER_PRIVATE_KEY }}
+          CONTAINER_TOOL: docker
   lint:
     runs-on: ubuntu-latest
     steps:
