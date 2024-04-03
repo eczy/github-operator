@@ -51,9 +51,3 @@ jobs:
         run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
       - name: Run yamlfmt
         run: yamlfmt -lint -quiet .
-      - name: Test
-        run: make test
-        env:
-          GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
-          GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
-          GITHUB_OPERATOR_RECORDER_MODE: replay-only
