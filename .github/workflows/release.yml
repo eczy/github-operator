@@ -34,10 +34,10 @@ jobs:
       - name: End-to-end test
         run: make test-e2e
         env:
-          GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
-          GITHUB_APP_ID: ${{ secrets.TEST_RUNNER_APP_ID }}
-          GITHUB_INSTALLATION_ID: ${{ secrets.TEST_RUNNER_INSTALLATION_ID }}
-          GITHUB_PRIVATE_KEY: ${{ secrets.TEST_RUNNER_PRIVATE_KEY }}
+          GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORGANIZATION }}
+          GITHUB_APP_ID: ${{ secrets.OPERATOR_TEST_APP_ID }}
+          GITHUB_INSTALLATION_ID: ${{ secrets.OPERATOR_TEST_INSTALLATION_ID }}
+          GITHUB_PRIVATE_KEY: ${{ secrets.OPERATOR_TEST_PRIVATE_KEY }}
           CONTAINER_TOOL: docker
   lint:
     runs-on: ubuntu-latest
