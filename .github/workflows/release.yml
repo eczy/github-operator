@@ -39,7 +39,7 @@ jobs:
         run: make build-installer IMG=ghcr.io/eczy/github-operator:v0.0.1
       - uses: marvinpinto/action-automatic-releases@latest
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          repo_token: ${{ secrets.TOKEN_GHCR_PUBLISH }}
           prerelease: false
           files: |-
             LICENSE.txt
