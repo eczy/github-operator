@@ -1,0 +1,67 @@
+name: PR checks
+on:
+  pull_request:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - name: Install dependencies
+        run: go mod download
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.54
+      - name: Install yamlfmt
+        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+      - name: Run yamlfmt
+        run: yamlfmt -lint -quiet .
+      - name: Test
+        run: make test
+        env:
+          GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
+          GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
+          GITHUB_OPERATOR_RECORDER_MODE: replay-only
+  # e2e:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Create k8s Kind Cluster
+  #       uses: helm/kind-action@v1
+  #     - name: Setup Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: '1.22.x'
+  #     - name: End-to-end test
+  #       run: make test-e2e
+  #       env:
+  #         GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
+  #         GITHUB_APP_ID: ${{ secrets.TEST_RUNNER_APP_ID }}
+  #         GITHUB_INSTALLATION_ID: ${{ secrets.TEST_RUNNER_INSTALLATION_ID }}
+  #         GITHUB_PRIVATE_KEY: ${{ secrets.TEST_RUNNER_PRIVATE_KEY }}
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22.x'
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: v1.54
+    - name: Install yamlfmt
+      run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+    - name: Run yamlfmt
+      run: yamlfmt -lint -quiet .
+    - name: Test
+      run: make test
+      env:
+        GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
+        GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
+        GITHUB_OPERATOR_RECORDER_MODE: replay-only
