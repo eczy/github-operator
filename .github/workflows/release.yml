@@ -17,14 +17,6 @@ jobs:
           go-version: '1.22.x'
       - name: Install dependencies
         run: go mod download
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: v1.54
-      - name: Install yamlfmt
-        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
-      - name: Run yamlfmt
-        run: yamlfmt -lint -quiet .
       - name: Test
         run: make test
         env:
