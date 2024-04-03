@@ -43,25 +43,25 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.22.x'
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v4
-      with:
-        version: v1.54
-    - name: Install yamlfmt
-      run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
-    - name: Run yamlfmt
-      run: yamlfmt -lint -quiet .
-    - name: Test
-      run: make test
-      env:
-        GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
-        GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
-        GITHUB_OPERATOR_RECORDER_MODE: replay-only
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.54
+      - name: Install yamlfmt
+        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+      - name: Run yamlfmt
+        run: yamlfmt -lint -quiet .
+      - name: Test
+        run: make test
+        env:
+          GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
+          GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
+          GITHUB_OPERATOR_RECORDER_MODE: replay-only
   publish-image:
     needs: [unit, e2e, lint]
     runs-on: ubuntu-latest
