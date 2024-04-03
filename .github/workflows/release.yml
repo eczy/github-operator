@@ -84,6 +84,7 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: /dist/install.yml
           asset_name: install.yml
+          asset_content_type: text/plain
       - name: Upload license
         uses: actions/upload-release-asset@v1
         env:
@@ -92,3 +93,4 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: /LICENSE
           asset_name: LICENSE
+          asset_content_type: text/plain
