@@ -30,6 +30,7 @@ import (
 	"path"
 	"reflect"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
 	"gopkg.in/dnaeon/go-vcr.v3/cassette"
@@ -280,7 +281,7 @@ func GitHubRecorderRoundTripper(ctx context.Context, base http.RoundTripper, opt
 				log.Fatal(err)
 			}
 			body["token"] = ""
-			body["expires_at"] = ""
+			body["expires_at"] = time.Now().Add(time.Hour * 24 * 365 * 200) // 200 years from now
 			modified, err := json.Marshal(body)
 			if err != nil {
 				log.Fatal(err)

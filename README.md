@@ -17,10 +17,11 @@ If you would like a new resource to be supported, please open an issue.
 
 ## Install
 
-To install using the installer included in this repository,
+To install using the installer included in this repository, insert the desired version in the snippet below and run:
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/eczy/github-operator/v0.0.1/dist/install.yaml
+kubectl apply -f https://github.com/eczy/github-operator/releases/download/vX.X.X/install.yaml
 ```
+For available versions, see the [Releases] page.
 
 ## Usage
 TODO
@@ -44,3 +45,4 @@ limitations under the License.
 [Kubernetes API features]: https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#common-features
 [Kubernetes operator]: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
 [Kustomize]: https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/
+[Releases]: https://github.com/eczy/github-operator/releases
