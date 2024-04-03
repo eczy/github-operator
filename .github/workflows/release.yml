@@ -3,11 +3,9 @@ on:
   push:
     tags:
       - v*
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-
 jobs:
   publish-image:
     runs-on: ubuntu-latest
@@ -64,10 +62,8 @@ jobs:
     # needs: [test-and-lint]
     steps:
       - uses: actions/checkout@v4
-      - name: Build image
-        run: make docker-build
       - name: Build installer
-        run: make build-installer IMG=ghcr.io/eczy/github-operator:v0.0.1
+        run: make build-installer IMG=ghcr.io/eczy/github-operator:${{ github.ref_name }}
       - uses: marvinpinto/action-automatic-releases@latest
         with:
           repo_token: ${{ secrets.TOKEN_GHCR_PUBLISH }}
