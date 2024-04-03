@@ -9,8 +9,12 @@
 
 name: Publish image
 on:
+  workflow_dispatch:
   push:
-    tags: [v*]
+    tags:
+      - 'v*'
+    branches:
+    - master
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}

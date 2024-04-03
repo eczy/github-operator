@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - name: Install dependencies
+        run: go mod download
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.54
+      - name: Install yamlfmt
+        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+      - name: Run yamlfmt
+        run: yamlfmt -lint -quiet .
+      - name: Test
+        run: make test
+        env:
+          GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
+          GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
+          GITHUB_OPERATOR_RECORDER_MODE: replay-only
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build image
+        run: make build
+      - name: Build installer
+        run: make build-installer IMG=ghcr.io/eczy/github-operator:v0.0.1
+      - uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
+          files: |
+            LICENSE.txt
+            *.jar
