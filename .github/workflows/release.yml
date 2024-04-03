@@ -64,8 +64,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build installer
         run: make build-installer IMG=ghcr.io/eczy/github-operator:${{ github.ref_name }}
-      - uses: marvinpinto/action-automatic-releases@latest
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          repo_token: ${{ secrets.TOKEN_GHCR_PUBLISH }}
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Changes in this Release
+            - First Change
+            - Second Change
+          draft: false
           prerelease: false
-          files: LICENSE
