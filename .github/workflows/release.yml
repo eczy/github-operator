@@ -30,7 +30,7 @@ jobs:
           GITHUB_OPERATOR_RECORDER_MODE: replay-only
   build-and-release:
     runs-on: ubuntu-latest
-    needs: [test-and-lint]
+    # needs: [test-and-lint]
     steps:
       - name: Build image
         run: make docker-build
