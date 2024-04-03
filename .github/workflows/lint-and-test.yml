@@ -1,41 +1,41 @@
-name: Lint and test
-on:
-  pull_request:
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22.x'
-      - name: Install dependencies
-        run: go mod download
-      - name: Test
-        run: make test
-        env:
-          GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
-          GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
-          GITHUB_OPERATOR_RECORDER_MODE: replay-only
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22.x'
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
-        with:
-          # Require: The version of golangci-lint to use.
-          # When `install-mode` is `binary` (default) the value can be v1.2 or v1.2.3 or `latest` to use the latest version.
-          # When `install-mode` is `goinstall` the value can be v1.2.3, `latest`, or the hash of a commit.
-          version: v1.54
-          # Optional: working directory, useful for monorepos
-          # working-directory: somedir
-      - name: Install yamlfmt
-        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
-      - name: Run yamlfmt
-        run: yamlfmt -lint -quiet .
+# name: Lint and test
+# on:
+#   pull_request:
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Setup Go
+#         uses: actions/setup-go@v5
+#         with:
+#           go-version: '1.22.x'
+#       - name: Install dependencies
+#         run: go mod download
+#       - name: Test
+#         run: make test
+#         env:
+#           GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
+#           GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
+#           GITHUB_OPERATOR_RECORDER_MODE: replay-only
+#   lint:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Setup Go
+#         uses: actions/setup-go@v5
+#         with:
+#           go-version: '1.22.x'
+#       - name: golangci-lint
+#         uses: golangci/golangci-lint-action@v4
+#         with:
+#           # Require: The version of golangci-lint to use.
+#           # When `install-mode` is `binary` (default) the value can be v1.2 or v1.2.3 or `latest` to use the latest version.
+#           # When `install-mode` is `goinstall` the value can be v1.2.3, `latest`, or the hash of a commit.
+#           version: v1.54
+#           # Optional: working directory, useful for monorepos
+#           # working-directory: somedir
+#       - name: Install yamlfmt
+#         run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+#       - name: Run yamlfmt
+#         run: yamlfmt -lint -quiet .

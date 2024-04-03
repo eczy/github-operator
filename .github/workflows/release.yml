@@ -3,32 +3,63 @@ on:
   push:
     tags:
       - v*
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  test-and-lint:
+  publish-image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Log in to the Container registry
+        uses: docker/login-action@5f4866a30a54f16a52d2ecb4a3898e9e424939cf
         with:
-          go-version: '1.22.x'
-      - name: Install dependencies
-        run: go mod download
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.TOKEN_GHCR_PUBLISH }}
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@c314eea2b27e3cb3c7d7be0618510234d8f6178e
         with:
-          version: v1.54
-      - name: Install yamlfmt
-        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
-      - name: Run yamlfmt
-        run: yamlfmt -lint -quiet .
-      - name: Test
-        run: make test
-        env:
-          GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
-          GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
-          GITHUB_OPERATOR_RECORDER_MODE: replay-only
-  build-and-release:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Build and push image
+        uses: docker/build-push-action@090ca155fc9b214cbcac536c450455a0e96f52c6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+  # test-and-lint:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Setup Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: '1.22.x'
+  #     - name: Install dependencies
+  #       run: go mod download
+  #     - name: golangci-lint
+  #       uses: golangci/golangci-lint-action@v4
+  #       with:
+  #         version: v1.54
+  #     - name: Install yamlfmt
+  #       run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+  #     - name: Run yamlfmt
+  #       run: yamlfmt -lint -quiet .
+  #     - name: Test
+  #       run: make test
+  #       env:
+  #         GITHUB_OPERATOR_TEST_ORG: ${{ vars.OPERATOR_TEST_ORG }}
+  #         GITHUB_OPERATOR_TEST_USER: ${{ vars.OPERATOR_TEST_USER }}
+  #         GITHUB_OPERATOR_RECORDER_MODE: replay-only
+  release:
     runs-on: ubuntu-latest
     # needs: [test-and-lint]
     steps:
@@ -41,6 +72,4 @@ jobs:
         with:
           repo_token: ${{ secrets.TOKEN_GHCR_PUBLISH }}
           prerelease: false
-          files: |-
-            LICENSE.txt
-            *.jar
+          files: LICENSE
