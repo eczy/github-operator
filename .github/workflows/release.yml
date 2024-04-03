@@ -82,7 +82,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: /dist/install.yaml
+          asset_path: dist/install.yaml
           asset_name: install.yaml
           asset_content_type: text/plain
       - name: Upload license
@@ -91,6 +91,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: /LICENSE
+          asset_path: LICENSE
           asset_name: LICENSE
           asset_content_type: text/plain
