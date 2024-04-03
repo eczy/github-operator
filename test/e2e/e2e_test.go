@@ -63,7 +63,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(ok).To(BeTrue(), "GITHUB_OPERATOR_TEST_ORG is required for this test")
 
 		containerTool := "podman"
-		if v, ok := os.LookupEnv("CONAINER_TOOL"); ok {
+		if v, ok := os.LookupEnv("CONTAINER_TOOL"); ok {
 			containerTool = v
 		}
 
