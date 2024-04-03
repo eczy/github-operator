@@ -76,6 +76,7 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
+          body: ${{ github.ref }}
       - name: Upload installer
         uses: actions/upload-release-asset@v1
         env:
