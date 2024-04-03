@@ -47,10 +47,6 @@ spec:
                 blocksCreations:
                   description: Is branch creation a protected operation.
                   type: boolean
-                branchPattern:
-                  description: Identifies the protection rule pattern.
-                  minLength: 1
-                  type: string
                 bypassForcePushApps:
                   description: A list of apps able to force push for this branch protection rule.
                   items:
@@ -93,6 +89,10 @@ spec:
                 lockBranch:
                   description: Whether to set the branch as read-only. If this is true, users will not be able to push to the branch.
                   type: boolean
+                pattern:
+                  description: Identifies the protection rule pattern.
+                  minLength: 1
+                  type: string
                 pushAllowanceApps:
                   description: A list of app push allowances for this branch protection rule.
                   items:
@@ -190,7 +190,7 @@ spec:
                     type: string
                   type: array
               required:
-                - branchPattern
+                - pattern
                 - repositoryName
                 - repositoryOwner
               type: object
