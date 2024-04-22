@@ -1,6 +1,7 @@
 module github.com/eczy/github-operator
 
 go 1.21
+toolchain go1.22.2
 
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.10.0
@@ -11,8 +12,8 @@ require (
 	github.com/shurcooL/githubv4 v0.0.0-20240120211514-18a1ae0e79dc
 	golang.org/x/oauth2 v0.19.0
 	gopkg.in/dnaeon/go-vcr.v3 v3.2.0
-	k8s.io/apimachinery v0.29.3
-	k8s.io/client-go v0.29.3
+	k8s.io/apimachinery v0.30.0
+	k8s.io/client-go v0.30.0
 	sigs.k8s.io/controller-runtime v0.17.3
 )
 
@@ -56,7 +57,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
-	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
@@ -67,7 +68,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.29.3 // indirect
+	k8s.io/api v0.30.0 // indirect
 	k8s.io/apiextensions-apiserver v0.29.3 // indirect
 	k8s.io/component-base v0.29.3 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
