@@ -111,7 +111,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	recorderMode := recorder.ModeRecordOnce
-	mode, ok := os.LookupEnv("GITHUB_OPERATOR_RECORD_MODE")
+	mode, ok := os.LookupEnv("GITHUB_OPERATOR_RECORDER_MODE")
 	lowerMode := strings.ToLower(mode)
 	if ok {
 		switch lowerMode {

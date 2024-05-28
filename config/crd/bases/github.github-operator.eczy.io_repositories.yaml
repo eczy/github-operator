@@ -1,4 +1,3 @@
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -14,402 +13,393 @@ spec:
     singular: repository
   scope: Namespaced
   versions:
-  - name: v1alpha1
-    schema:
-      openAPIV3Schema:
-        description: Repository is the Schema for the repositories API
-        properties:
-          apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-            type: string
-          kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: RepositorySpec defines the desired state of Repository
-            properties:
-              allowAutoMerge:
-                description: 'Either true to allow auto-merge on pull requests, or
-                  false to disallow auto-merge. Default: false.'
-                type: boolean
-              allowForking:
-                description: |-
-                  Either true to allow private forks, or false to prevent private forks.
-                  Default: false
-                type: boolean
-              allowMergeCommit:
-                description: 'Either true to allow merging pull requests with a merge
-                  commit, or false to prevent merging pull requests with merge commits.
-                  Default: true.'
-                type: boolean
-              allowRebaseMerge:
-                description: |-
-                  Either true to allow rebase-merging pull requests, or false to prevent rebase-merging.
-                  Default: true
-                type: boolean
-              allowSquashMerge:
-                description: 'Either true to allow squash-merging pull requests, or
-                  false to prevent squash-merging. Default: true.'
-                type: boolean
-              allowUpdateBranch:
-                description: |-
-                  Either true to always allow a pull request head branch that is behind its base branch to be updated even if it is not required to be up to date before merging, or false otherwise.
-                  Default: false
-                type: boolean
-              archived:
-                description: |-
-                  Whether to archive this repository. false will unarchive a previously archived repository.
-                  Default: false
-                type: boolean
-              defaultBranch:
-                description: The default branch for this repository.
-                type: string
-              deleteBranchOnMerge:
-                description: 'Either true to allow automatically deleting head branches
-                  when pull requests are merged, or false to prevent automatic deletion.
-                  Default: false.'
-                type: boolean
-              description:
-                description: Repository description.
-                type: string
-              hasDiscussions:
-                description: |-
-                  Whether discussions are enabled.
-                  Default: false
-                type: boolean
-              hasDownloads:
-                description: |-
-                  Whether downloads are enabled.
-                  Default: true
-                type: boolean
-              hasIssues:
-                description: |-
-                  Either true to enable issues for this repository or false to disable them.
-                  Default: true
-                type: boolean
-              hasProjects:
-                description: |-
-                  Either true to enable projects for this repository or false to disable them. Note: If you're creating a repository in an organization that has disabled repository projects, the default is false, and if you pass true, the API returns an error.
-                  Default: true
-                type: boolean
-              hasWiki:
-                description: |-
-                  Whether the wiki is enabled.
-                  Default: true
-                type: boolean
-              homepage:
-                description: A URL with more information about the repository.
-                type: string
-              mergeCommitMessage:
-                description: |-
-                  The default value for a merge commit message.
-                    - PR_TITLE - default to the pull request's title.
-                    - PR_BODY - default to the pull request's body.
-                    - BLANK - default to a blank commit message.
-                  Can be one of: PR_BODY, PR_TITLE, BLANK
-                enum:
-                - PR_BODY
-                - PR_TITLE
-                - BLANK
-                type: string
-              mergeCommitTitle:
-                description: |-
-                  The default value for a merge commit title.
-                    - PR_TITLE - default to the pull request's title.
-                    - MERGE_MESSAGE - default to the classic title for a merge message (e.g., Merge pull request #123 from branch-name).
-                  Can be one of: PR_TITLE, MERGE_MESSAGE
-                enum:
-                - PR_TITLE
-                - MERGE_MESSAGE
-                type: string
-              name:
-                description: The name of the repository.
-                minLength: 1
-                type: string
-              owner:
-                description: The organization name. The name is not case sensitive.
-                minLength: 1
-                type: string
-              securitAandAnalysis:
-                description: |-
-                  Specify which security and analysis features to enable or disable for the repository.
-
-
-                  To use this parameter, you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see [Managing security managers in your organization].
-
-
-                  [Managing security managers in your organization]: https://docs.github.com/en/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization
-                properties:
-                  advancedSecurity:
-                    description: |-
-                      Use the status property to enable or disable GitHub Advanced Security for this repository. For more information, see [About GitHub Advanced Security].
-
-
-                      [About GitHub Advanced Security]: https://docs.github.com/en/get-started/learning-about-github/about-github-advanced-security
-                    properties:
-                      status:
-                        description: Can be enabled or disabled.
-                        type: string
-                    required:
-                    - status
-                    type: object
-                  secretScanning:
-                    description: |-
-                      Use the status property to enable or disable secret scanning for this repository. For more information, see [About secret scanning].
-
-
-                      [About secret scanning]: https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning
-                    properties:
-                      status:
-                        description: Can be enabled or disabled.
-                        type: string
-                    required:
-                    - status
-                    type: object
-                  secretScanningPushProtection:
-                    description: |-
-                      Use the status property to enable or disable secret scanning push protection for this repository. For more information, see [Protecting pushes with secret scanning].
-
-
-                      [Protecting pushes with secret scanning]: https://docs.github.com/en/code-security/secret-scanning/push-protection-for-repositories-and-organizations
-                    properties:
-                      status:
-                        description: Can be enabled or disabled.
-                        type: string
-                    required:
-                    - status
-                    type: object
-                required:
-                - advancedSecurity
-                - secretScanning
-                - secretScanningPushProtection
-                type: object
-              squashMergeCommitMessage:
-                description: |-
-                  The default value for a squash merge commit message:
-                    - PR_BODY - default to the pull request's body.
-                    - COMMIT_MESSAGES - default to the branch's commit messages.
-                    - BLANK - default to a blank commit message.
-                  Can be one of: PR_BODY, COMMIT_MESSAGES, BLANK
-                enum:
-                - PR_BODY
-                - COMMIT_MESSAGES
-                - BLANK
-                type: string
-              squashMergeCommitTitle:
-                description: |-
-                  The default value for a squash merge commit title:
-                    - PR_TITLE - default to the pull request's title.
-                    - COMMIT_OR_PR_TITLE - default to the commit's title (if only one commit) or the pull request's title (when more than one commit).
-                  Can be one of: PR_TITLE, COMMIT_OR_PR_TITLE
-                enum:
-                - PR_TITLE
-                - COMMIT_OR_PR_TITLE
-                type: string
-              templateOwner:
-                description: The account owner of the template repository. The name
-                  is not case sensitive.
-                type: string
-              templateRepository:
-                description: The name of the template repository without the .git
-                  extension. The name is not case sensitive.
-                type: string
-              topics:
-                description: Set of topics with which the repository will be associated.
-                items:
+    - name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: Repository is the Schema for the repositories API
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: RepositorySpec defines the desired state of Repository
+              properties:
+                allowAutoMerge:
+                  description: 'Either true to allow auto-merge on pull requests, or false to disallow auto-merge. Default: false.'
+                  type: boolean
+                allowForking:
+                  description: |-
+                    Either true to allow private forks, or false to prevent private forks.
+                    Default: false
+                  type: boolean
+                allowMergeCommit:
+                  description: 'Either true to allow merging pull requests with a merge commit, or false to prevent merging pull requests with merge commits. Default: true.'
+                  type: boolean
+                allowRebaseMerge:
+                  description: |-
+                    Either true to allow rebase-merging pull requests, or false to prevent rebase-merging.
+                    Default: true
+                  type: boolean
+                allowSquashMerge:
+                  description: 'Either true to allow squash-merging pull requests, or false to prevent squash-merging. Default: true.'
+                  type: boolean
+                allowUpdateBranch:
+                  description: |-
+                    Either true to always allow a pull request head branch that is behind its base branch to be updated even if it is not required to be up to date before merging, or false otherwise.
+                    Default: false
+                  type: boolean
+                archived:
+                  description: |-
+                    Whether to archive this repository. false will unarchive a previously archived repository.
+                    Default: false
+                  type: boolean
+                defaultBranch:
+                  description: The default branch for this repository.
                   type: string
-                type: array
-              visibility:
-                description: 'The visibility of the repository. Can be one of: public,
-                  private, internal.'
-                type: string
-              webCommitSignoffRequired:
-                description: |-
-                  Either true to require contributors to sign off on web-based commits, or false to not require contributors to sign off on web-based commits.
-                  Default: false
-                type: boolean
-            required:
-            - name
-            - owner
-            type: object
-          status:
-            description: RepositoryStatus defines the observed state of Repository
-            properties:
-              allowAutoMerge:
-                type: boolean
-              allowForking:
-                type: boolean
-              allowMergeCommit:
-                type: boolean
-              allowRebaseMerge:
-                type: boolean
-              allowSquashMerge:
-                type: boolean
-              allowUpdateBranch:
-                type: boolean
-              archived:
-                type: boolean
-              createdAt:
-                format: date-time
-                type: string
-              defaultBranch:
-                type: string
-              deleteBranchOnMerge:
-                type: boolean
-              description:
-                type: string
-              fullName:
-                type: string
-              hasDiscussions:
-                type: boolean
-              hasDownloads:
-                type: boolean
-              hasIssues:
-                type: boolean
-              hasProjects:
-                type: boolean
-              hasWiki:
-                type: boolean
-              homepage:
-                type: string
-              id:
-                format: int64
-                type: integer
-              lastUpdateTimestamp:
-                format: date-time
-                type: string
-              mergeCommitMessage:
-                enum:
-                - PR_BODY
-                - PR_TITLE
-                - BLANK
-                type: string
-              mergeCommitTitle:
-                enum:
-                - PR_TITLE
-                - MERGE_MESSAGE
-                type: string
-              name:
-                type: string
-              nodeId:
-                type: string
-              organizationId:
-                format: int64
-                type: integer
-              organizationLogin:
-                type: string
-              owner:
-                type: string
-              ownerLogin:
-                type: string
-              ownerNodeId:
-                format: int64
-                type: integer
-              parentId:
-                format: int64
-                type: integer
-              parentName:
-                type: string
-              parentNodeId:
-                type: string
-              pushedAt:
-                format: date-time
-                type: string
-              securityAndAnalysis:
-                properties:
-                  advancedSecurity:
-                    description: |-
-                      Use the status property to enable or disable GitHub Advanced Security for this repository. For more information, see [About GitHub Advanced Security].
-
-
-                      [About GitHub Advanced Security]: https://docs.github.com/en/get-started/learning-about-github/about-github-advanced-security
-                    properties:
-                      status:
-                        description: Can be enabled or disabled.
-                        type: string
-                    required:
-                    - status
-                    type: object
-                  secretScanning:
-                    description: |-
-                      Use the status property to enable or disable secret scanning for this repository. For more information, see [About secret scanning].
-
-
-                      [About secret scanning]: https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning
-                    properties:
-                      status:
-                        description: Can be enabled or disabled.
-                        type: string
-                    required:
-                    - status
-                    type: object
-                  secretScanningPushProtection:
-                    description: |-
-                      Use the status property to enable or disable secret scanning push protection for this repository. For more information, see [Protecting pushes with secret scanning].
-
-
-                      [Protecting pushes with secret scanning]: https://docs.github.com/en/code-security/secret-scanning/push-protection-for-repositories-and-organizations
-                    properties:
-                      status:
-                        description: Can be enabled or disabled.
-                        type: string
-                    required:
-                    - status
-                    type: object
-                required:
-                - advancedSecurity
-                - secretScanning
-                - secretScanningPushProtection
-                type: object
-              squashMergeCommitMessage:
-                enum:
-                - PR_BODY
-                - COMMIT_MESSAGES
-                - BLANK
-                type: string
-              squashMergeCommitTitle:
-                enum:
-                - PR_TITLE
-                - COMMIT_OR_PR_TITLE
-                type: string
-              templateOwner:
-                type: string
-              templateRepository:
-                type: string
-              templateRepositoryId:
-                format: int64
-                type: integer
-              templateRepositoryName:
-                type: string
-              templateRepositoryOwnerLogin:
-                type: string
-              templateRepositoryOwnerNodeId:
-                type: string
-              topics:
-                items:
+                deleteBranchOnMerge:
+                  description: 'Either true to allow automatically deleting head branches when pull requests are merged, or false to prevent automatic deletion. Default: false.'
+                  type: boolean
+                description:
+                  description: Repository description.
                   type: string
-                type: array
-              updatedAt:
-                format: date-time
-                type: string
-              visibility:
-                type: string
-              webCommitSignoffRequired:
-                type: boolean
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
+                hasDiscussions:
+                  description: |-
+                    Whether discussions are enabled.
+                    Default: false
+                  type: boolean
+                hasDownloads:
+                  description: |-
+                    Whether downloads are enabled.
+                    Default: true
+                  type: boolean
+                hasIssues:
+                  description: |-
+                    Either true to enable issues for this repository or false to disable them.
+                    Default: true
+                  type: boolean
+                hasProjects:
+                  description: |-
+                    Either true to enable projects for this repository or false to disable them. Note: If you're creating a repository in an organization that has disabled repository projects, the default is false, and if you pass true, the API returns an error.
+                    Default: true
+                  type: boolean
+                hasWiki:
+                  description: |-
+                    Whether the wiki is enabled.
+                    Default: true
+                  type: boolean
+                homepage:
+                  description: A URL with more information about the repository.
+                  type: string
+                mergeCommitMessage:
+                  description: |-
+                    The default value for a merge commit message.
+                      - PR_TITLE - default to the pull request's title.
+                      - PR_BODY - default to the pull request's body.
+                      - BLANK - default to a blank commit message.
+                    Can be one of: PR_BODY, PR_TITLE, BLANK
+                  enum:
+                    - PR_BODY
+                    - PR_TITLE
+                    - BLANK
+                  type: string
+                mergeCommitTitle:
+                  description: |-
+                    The default value for a merge commit title.
+                      - PR_TITLE - default to the pull request's title.
+                      - MERGE_MESSAGE - default to the classic title for a merge message (e.g., Merge pull request #123 from branch-name).
+                    Can be one of: PR_TITLE, MERGE_MESSAGE
+                  enum:
+                    - PR_TITLE
+                    - MERGE_MESSAGE
+                  type: string
+                name:
+                  description: The name of the repository.
+                  minLength: 1
+                  type: string
+                owner:
+                  description: The organization name. The name is not case sensitive.
+                  minLength: 1
+                  type: string
+                securitAandAnalysis:
+                  description: |-
+                    Specify which security and analysis features to enable or disable for the repository.
+
+
+                    To use this parameter, you must have admin permissions for the repository or be an owner or security manager for the organization that owns the repository. For more information, see [Managing security managers in your organization].
+
+
+                    [Managing security managers in your organization]: https://docs.github.com/en/organizations/managing-peoples-access-to-your-organization-with-roles/managing-security-managers-in-your-organization
+                  properties:
+                    advancedSecurity:
+                      description: |-
+                        Use the status property to enable or disable GitHub Advanced Security for this repository. For more information, see [About GitHub Advanced Security].
+
+
+                        [About GitHub Advanced Security]: https://docs.github.com/en/get-started/learning-about-github/about-github-advanced-security
+                      properties:
+                        status:
+                          description: Can be enabled or disabled.
+                          type: string
+                      required:
+                        - status
+                      type: object
+                    secretScanning:
+                      description: |-
+                        Use the status property to enable or disable secret scanning for this repository. For more information, see [About secret scanning].
+
+
+                        [About secret scanning]: https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning
+                      properties:
+                        status:
+                          description: Can be enabled or disabled.
+                          type: string
+                      required:
+                        - status
+                      type: object
+                    secretScanningPushProtection:
+                      description: |-
+                        Use the status property to enable or disable secret scanning push protection for this repository. For more information, see [Protecting pushes with secret scanning].
+
+
+                        [Protecting pushes with secret scanning]: https://docs.github.com/en/code-security/secret-scanning/push-protection-for-repositories-and-organizations
+                      properties:
+                        status:
+                          description: Can be enabled or disabled.
+                          type: string
+                      required:
+                        - status
+                      type: object
+                  required:
+                    - advancedSecurity
+                    - secretScanning
+                    - secretScanningPushProtection
+                  type: object
+                squashMergeCommitMessage:
+                  description: |-
+                    The default value for a squash merge commit message:
+                      - PR_BODY - default to the pull request's body.
+                      - COMMIT_MESSAGES - default to the branch's commit messages.
+                      - BLANK - default to a blank commit message.
+                    Can be one of: PR_BODY, COMMIT_MESSAGES, BLANK
+                  enum:
+                    - PR_BODY
+                    - COMMIT_MESSAGES
+                    - BLANK
+                  type: string
+                squashMergeCommitTitle:
+                  description: |-
+                    The default value for a squash merge commit title:
+                      - PR_TITLE - default to the pull request's title.
+                      - COMMIT_OR_PR_TITLE - default to the commit's title (if only one commit) or the pull request's title (when more than one commit).
+                    Can be one of: PR_TITLE, COMMIT_OR_PR_TITLE
+                  enum:
+                    - PR_TITLE
+                    - COMMIT_OR_PR_TITLE
+                  type: string
+                templateOwner:
+                  description: The account owner of the template repository. The name is not case sensitive.
+                  type: string
+                templateRepository:
+                  description: The name of the template repository without the .git extension. The name is not case sensitive.
+                  type: string
+                topics:
+                  description: Set of topics with which the repository will be associated.
+                  items:
+                    type: string
+                  type: array
+                visibility:
+                  description: 'The visibility of the repository. Can be one of: public, private, internal.'
+                  type: string
+                webCommitSignoffRequired:
+                  description: |-
+                    Either true to require contributors to sign off on web-based commits, or false to not require contributors to sign off on web-based commits.
+                    Default: false
+                  type: boolean
+              required:
+                - name
+                - owner
+              type: object
+            status:
+              description: RepositoryStatus defines the observed state of Repository
+              properties:
+                allowAutoMerge:
+                  type: boolean
+                allowForking:
+                  type: boolean
+                allowMergeCommit:
+                  type: boolean
+                allowRebaseMerge:
+                  type: boolean
+                allowSquashMerge:
+                  type: boolean
+                allowUpdateBranch:
+                  type: boolean
+                archived:
+                  type: boolean
+                createdAt:
+                  format: date-time
+                  type: string
+                defaultBranch:
+                  type: string
+                deleteBranchOnMerge:
+                  type: boolean
+                description:
+                  type: string
+                fullName:
+                  type: string
+                hasDiscussions:
+                  type: boolean
+                hasDownloads:
+                  type: boolean
+                hasIssues:
+                  type: boolean
+                hasProjects:
+                  type: boolean
+                hasWiki:
+                  type: boolean
+                homepage:
+                  type: string
+                id:
+                  format: int64
+                  type: integer
+                lastUpdateTimestamp:
+                  format: date-time
+                  type: string
+                mergeCommitMessage:
+                  enum:
+                    - PR_BODY
+                    - PR_TITLE
+                    - BLANK
+                  type: string
+                mergeCommitTitle:
+                  enum:
+                    - PR_TITLE
+                    - MERGE_MESSAGE
+                  type: string
+                name:
+                  type: string
+                nodeId:
+                  type: string
+                organizationId:
+                  format: int64
+                  type: integer
+                organizationLogin:
+                  type: string
+                owner:
+                  type: string
+                ownerLogin:
+                  type: string
+                ownerNodeId:
+                  format: int64
+                  type: integer
+                parentId:
+                  format: int64
+                  type: integer
+                parentName:
+                  type: string
+                parentNodeId:
+                  type: string
+                pushedAt:
+                  format: date-time
+                  type: string
+                securityAndAnalysis:
+                  properties:
+                    advancedSecurity:
+                      description: |-
+                        Use the status property to enable or disable GitHub Advanced Security for this repository. For more information, see [About GitHub Advanced Security].
+
+
+                        [About GitHub Advanced Security]: https://docs.github.com/en/get-started/learning-about-github/about-github-advanced-security
+                      properties:
+                        status:
+                          description: Can be enabled or disabled.
+                          type: string
+                      required:
+                        - status
+                      type: object
+                    secretScanning:
+                      description: |-
+                        Use the status property to enable or disable secret scanning for this repository. For more information, see [About secret scanning].
+
+
+                        [About secret scanning]: https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning
+                      properties:
+                        status:
+                          description: Can be enabled or disabled.
+                          type: string
+                      required:
+                        - status
+                      type: object
+                    secretScanningPushProtection:
+                      description: |-
+                        Use the status property to enable or disable secret scanning push protection for this repository. For more information, see [Protecting pushes with secret scanning].
+
+
+                        [Protecting pushes with secret scanning]: https://docs.github.com/en/code-security/secret-scanning/push-protection-for-repositories-and-organizations
+                      properties:
+                        status:
+                          description: Can be enabled or disabled.
+                          type: string
+                      required:
+                        - status
+                      type: object
+                  required:
+                    - advancedSecurity
+                    - secretScanning
+                    - secretScanningPushProtection
+                  type: object
+                squashMergeCommitMessage:
+                  enum:
+                    - PR_BODY
+                    - COMMIT_MESSAGES
+                    - BLANK
+                  type: string
+                squashMergeCommitTitle:
+                  enum:
+                    - PR_TITLE
+                    - COMMIT_OR_PR_TITLE
+                  type: string
+                templateOwner:
+                  type: string
+                templateRepository:
+                  type: string
+                templateRepositoryId:
+                  format: int64
+                  type: integer
+                templateRepositoryName:
+                  type: string
+                templateRepositoryOwnerLogin:
+                  type: string
+                templateRepositoryOwnerNodeId:
+                  type: string
+                topics:
+                  items:
+                    type: string
+                  type: array
+                updatedAt:
+                  format: date-time
+                  type: string
+                visibility:
+                  type: string
+                webCommitSignoffRequired:
+                  type: boolean
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
