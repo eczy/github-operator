@@ -9,7 +9,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.17.2
 	github.com/onsi/gomega v1.33.1
 	github.com/shurcooL/githubv4 v0.0.0-20240120211514-18a1ae0e79dc
-	golang.org/x/oauth2 v0.19.0
+	golang.org/x/oauth2 v0.20.0
 	gopkg.in/dnaeon/go-vcr.v3 v3.2.0
 	k8s.io/apimachinery v0.29.3
 	k8s.io/client-go v0.29.3
