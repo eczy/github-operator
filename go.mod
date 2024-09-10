@@ -9,7 +9,7 @@ require (
 	github.com/gofri/go-github-ratelimit v1.1.0
 	github.com/google/go-github/v60 v60.0.0
 	github.com/onsi/ginkgo/v2 v2.20.2
-	github.com/onsi/gomega v1.34.1
+	github.com/onsi/gomega v1.34.2
 	github.com/shurcooL/githubv4 v0.0.0-20240120211514-18a1ae0e79dc
 	golang.org/x/oauth2 v0.23.0
 	gopkg.in/dnaeon/go-vcr.v3 v3.2.0
