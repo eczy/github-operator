@@ -71,7 +71,7 @@ jobs:
           password: ${{ secrets.TOKEN_GHCR_PUBLISH }}
       - name: Extract metadata (tags, labels)
         id: meta
-        uses: docker/metadata-action@d31acd50653ded455ab8972a1eb9a656b0aef94a
+        uses: docker/metadata-action@906ecf0fc0a80f9110f79d9e6c04b1080f4a2621
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
       - name: Build and push image
