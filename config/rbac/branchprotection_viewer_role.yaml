@@ -3,25 +3,21 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: branchprotection-viewer-role
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: github-operator
-    app.kubernetes.io/part-of: github-operator
+    app.kubernetes.io/name: output-dir
     app.kubernetes.io/managed-by: kustomize
   name: branchprotection-viewer-role
 rules:
-  - apiGroups:
-      - github.github-operator.eczy.io
-    resources:
-      - branchprotections
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - github.github-operator.eczy.io
-    resources:
-      - branchprotections/status
-    verbs:
-      - get
+- apiGroups:
+  - github.github-operator.eczy.io
+  resources:
+  - branchprotections
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - github.github-operator.eczy.io
+  resources:
+  - branchprotections/status
+  verbs:
+  - get

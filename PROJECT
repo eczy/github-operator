@@ -5,7 +5,7 @@
 domain: github-operator.eczy.io
 layout:
 - go.kubebuilder.io/v4
-projectName: github-operator
+projectName: output-dir
 repo: github.com/eczy/github-operator
 resources:
 - api:

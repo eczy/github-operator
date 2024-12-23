@@ -1,5 +1,5 @@
 /*
-Copyright 2024 Evan Czyzycki
+Copyright 2024.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,37 +17,47 @@ limitations under the License.
 package utils
 
 import (
+	"bufio"
 	"bytes"
-	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
 	"os"
 	"os/exec"
-	"path"
-	"reflect"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
-	"gopkg.in/dnaeon/go-vcr.v3/cassette"
-	"gopkg.in/dnaeon/go-vcr.v3/recorder"
 )
 
 const (
-	prometheusOperatorVersion = "v0.68.0"
+	prometheusOperatorVersion = "v0.77.1"
 	prometheusOperatorURL     = "https://github.com/prometheus-operator/prometheus-operator/" +
 		"releases/download/%s/bundle.yaml"
 
-	certmanagerVersion = "v1.5.3"
+	certmanagerVersion = "v1.16.0"
 	certmanagerURLTmpl = "https://github.com/jetstack/cert-manager/releases/download/%s/cert-manager.yaml"
 )
 
 func warnError(err error) {
-	fmt.Fprintf(GinkgoWriter, "warning: %v\n", err)
+	_, _ = fmt.Fprintf(GinkgoWriter, "warning: %v\n", err)
+}
+
+// Run executes the provided command within this context
+func Run(cmd *exec.Cmd) (string, error) {
+	dir, _ := GetProjectDir()
+	cmd.Dir = dir
+
+	if err := os.Chdir(cmd.Dir); err != nil {
+		_, _ = fmt.Fprintf(GinkgoWriter, "chdir dir: %s\n", err)
+	}
+
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	command := strings.Join(cmd.Args, " ")
+	_, _ = fmt.Fprintf(GinkgoWriter, "running: %s\n", command)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output), fmt.Errorf("%s failed with error: (%v) %s", command, err, string(output))
+	}
+
+	return string(output), nil
 }
 
 // InstallPrometheusOperator installs the prometheus Operator to be used to export the enabled metrics.
@@ -58,26 +68,6 @@ func InstallPrometheusOperator() error {
 	return err
 }
 
-// Run executes the provided command within this context
-func Run(cmd *exec.Cmd) ([]byte, error) {
-	dir, _ := GetProjectDir()
-	cmd.Dir = dir
-
-	if err := os.Chdir(cmd.Dir); err != nil {
-		fmt.Fprintf(GinkgoWriter, "chdir dir: %s\n", err)
-	}
-
-	cmd.Env = append(os.Environ(), "GO111MODULE=on")
-	command := strings.Join(cmd.Args, " ")
-	fmt.Fprintf(GinkgoWriter, "running: %s\n", command)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return output, fmt.Errorf("%s failed with error: (%v) %s", command, err, string(output))
-	}
-
-	return output, nil
-}
-
 // UninstallPrometheusOperator uninstalls the prometheus
 func UninstallPrometheusOperator() {
 	url := fmt.Sprintf(prometheusOperatorURL, prometheusOperatorVersion)
@@ -85,6 +75,33 @@ func UninstallPrometheusOperator() {
 	if _, err := Run(cmd); err != nil {
 		warnError(err)
 	}
+}
+
+// IsPrometheusCRDsInstalled checks if any Prometheus CRDs are installed
+// by verifying the existence of key CRDs related to Prometheus.
+func IsPrometheusCRDsInstalled() bool {
+	// List of common Prometheus CRDs
+	prometheusCRDs := []string{
+		"prometheuses.monitoring.coreos.com",
+		"prometheusrules.monitoring.coreos.com",
+		"prometheusagents.monitoring.coreos.com",
+	}
+
+	cmd := exec.Command("kubectl", "get", "crds", "-o", "custom-columns=NAME:.metadata.name")
+	output, err := Run(cmd)
+	if err != nil {
+		return false
+	}
+	crdList := GetNonEmptyLines(string(output))
+	for _, crd := range prometheusCRDs {
+		for _, line := range crdList {
+			if strings.Contains(line, crd) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // UninstallCertManager uninstalls the cert manager
@@ -115,7 +132,40 @@ func InstallCertManager() error {
 	return err
 }
 
-// LoadImageToKindCluster loads a local docker image to the kind cluster
+// IsCertManagerCRDsInstalled checks if any Cert Manager CRDs are installed
+// by verifying the existence of key CRDs related to Cert Manager.
+func IsCertManagerCRDsInstalled() bool {
+	// List of common Cert Manager CRDs
+	certManagerCRDs := []string{
+		"certificates.cert-manager.io",
+		"issuers.cert-manager.io",
+		"clusterissuers.cert-manager.io",
+		"certificaterequests.cert-manager.io",
+		"orders.acme.cert-manager.io",
+		"challenges.acme.cert-manager.io",
+	}
+
+	// Execute the kubectl command to get all CRDs
+	cmd := exec.Command("kubectl", "get", "crds")
+	output, err := Run(cmd)
+	if err != nil {
+		return false
+	}
+
+	// Check if any of the Cert Manager CRDs are present
+	crdList := GetNonEmptyLines(string(output))
+	for _, crd := range certManagerCRDs {
+		for _, line := range crdList {
+			if strings.Contains(line, crd) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// LoadImageToKindClusterWithName loads a local docker image to the kind cluster
 func LoadImageToKindClusterWithName(name string) error {
 	cluster := "kind"
 	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
@@ -124,29 +174,6 @@ func LoadImageToKindClusterWithName(name string) error {
 	kindOptions := []string{"load", "docker-image", name, "--name", cluster}
 	cmd := exec.Command("kind", kindOptions...)
 	_, err := Run(cmd)
-	return err
-}
-
-// LoadImageToKindCluster loads a local docker image to the kind cluster
-func LoadPodmanImageToKindClusterWithName(name string) (err error) {
-	imgPath := ".e2e-test-image.tar"
-	podmanOptions := []string{"save", name, "-o", imgPath}
-	cmd := exec.Command("podman", podmanOptions...)
-	_, err = Run(cmd)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = errors.Join(err, os.Remove(imgPath))
-	}()
-
-	cluster := "kind"
-	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
-		cluster = v
-	}
-	kindOptions := []string{"load", "image-archive", imgPath, "--name", cluster}
-	cmd = exec.Command("kind", kindOptions...)
-	_, err = Run(cmd)
 	return err
 }
 
@@ -174,177 +201,51 @@ func GetProjectDir() (string, error) {
 	return wd, nil
 }
 
-func VerifyPodUp(namespace, name string) error {
-	cmd := exec.Command("kubectl", "get",
-		"pods", "-l", fmt.Sprintf("control-plane=%s", name),
-		"-o", "go-template={{ range .items }}"+
-			"{{ if not .metadata.deletionTimestamp }}"+
-			"{{ .metadata.name }}"+
-			"{{ \"\\n\" }}{{ end }}{{ end }}",
-		"-n", namespace,
-	)
-
-	podOutput, err := Run(cmd)
+// UncommentCode searches for target in the file and remove the comment prefix
+// of the target content. The target content may span multiple lines.
+func UncommentCode(filename, target, prefix string) error {
+	// false positive
+	// nolint:gosec
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
-	podNames := GetNonEmptyLines(string(podOutput))
-	if len(podNames) != 1 {
-		return fmt.Errorf("expect 1 controller pods running, but got %d", len(podNames))
-	}
-	controllerPodName := podNames[0]
-	if !strings.Contains(controllerPodName, name) {
-		return fmt.Errorf("'%s' should contain '%s'", controllerPodName, name)
+	strContent := string(content)
+
+	idx := strings.Index(strContent, target)
+	if idx < 0 {
+		return fmt.Errorf("unable to find the code %s to be uncomment", target)
 	}
 
-	// Validate pod status
-	cmd = exec.Command("kubectl", "get",
-		"pods", controllerPodName, "-o", "jsonpath={.status.phase}",
-		"-n", namespace,
-	)
-	status, err := Run(cmd)
+	out := new(bytes.Buffer)
+	_, err = out.Write(content[:idx])
 	if err != nil {
 		return err
 	}
-	if string(status) != "Running" {
-		return fmt.Errorf("controller pod in %s status", status)
-	}
-	return nil
-}
 
-func GetField(namespace, kind, name, jsonPath string) (string, error) {
-	cmd := exec.Command("kubectl", "get", "-n", namespace, kind, name, fmt.Sprintf("-o=jsonpath=%s", jsonPath))
-	output, err := Run(cmd)
-	return string(output), err
-}
-
-func Patch(namespace, kind, name, patch string) error {
-	cmd := exec.Command("kubectl", "patch", "-n", namespace, kind, name, "--type=json", "-p", patch)
-	_, err := Run(cmd)
-	return err
-}
-
-func Apply(namespace string, object map[string]interface{}) error {
-	cmd := exec.Command("kubectl", "apply", "-n", namespace, "-f", "-")
-	objJson, err := json.Marshal(object)
-	if err != nil {
-		return err
-	}
-	cmd.Stdin = bytes.NewBuffer(objJson)
-	if _, err := Run(cmd); err != nil {
-		return err
-	}
-	return nil
-}
-
-func Delete(namespace string, object map[string]interface{}) error {
-	cmd := exec.Command("kubectl", "delete", "-n", namespace, "-f", "-")
-	objJson, err := json.Marshal(object)
-	if err != nil {
-		return err
-	}
-	cmd.Stdin = bytes.NewBuffer(objJson)
-	if _, err := Run(cmd); err != nil {
-		return err
-	}
-	return nil
-}
-
-func LoadEnvVarsError(names ...string) (map[string]string, error) {
-	varMap := map[string]string{}
-	notSet := []string{}
-	for _, name := range names {
-		if v, ok := os.LookupEnv(name); ok {
-			varMap[name] = v
-		} else {
-			notSet = append(notSet, name)
-		}
-	}
-	if len(notSet) > 0 {
-		return nil, fmt.Errorf("expected env vars to be set: %v", notSet)
-	}
-	return varMap, nil
-}
-
-// nolint
-func GitHubRecorderRoundTripper(ctx context.Context, base http.RoundTripper, opts *recorder.Options) (*recorder.Recorder, error) {
-	r, err := recorder.NewWithOptions(opts)
-	if err != nil {
-		return nil, err
-	}
-	rmSecretsHook := func(i *cassette.Interaction) error {
-		delete(i.Request.Headers, "Authorization")
-		if path.Base(i.Request.URL) == "access_tokens" {
-			var body map[string]interface{}
-			err := json.Unmarshal([]byte(i.Response.Body), &body)
-			if err != nil {
-				log.Fatal(err)
-			}
-			body["token"] = ""
-			body["expires_at"] = time.Now().Add(time.Hour * 24 * 365 * 200) // 200 years from now
-			modified, err := json.Marshal(body)
-			if err != nil {
-				log.Fatal(err)
-			}
-			i.Response.Body = string(modified)
-		}
+	scanner := bufio.NewScanner(bytes.NewBufferString(target))
+	if !scanner.Scan() {
 		return nil
 	}
-	r.AddHook(rmSecretsHook, recorder.BeforeSaveHook)
-	r.SetMatcher(func(r1 *http.Request, r2 cassette.Request) bool {
-		// Method
-		if r1.Method != r2.Method {
-			return false
-		}
-		if r1.Method == "" && r2.Method != "GET" {
-			// for client requests, "" means GET
-			return false
-		}
-		// URL
-		if r1.URL.String() != r2.URL {
-			return false
-		}
-		// Body (as JSON)
-		if r1.Body == nil && r2.Body == "" {
-			return true
-		}
-		if r1.Body != nil && r2.Body == "" {
-			return false
-		}
-		if r1.Body == nil && r2.Body != "" {
-			return false
-		}
-		r1BodyBytes, err := io.ReadAll(r1.Body)
+	for {
+		_, err := out.WriteString(strings.TrimPrefix(scanner.Text(), prefix))
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
-		err = r1.Body.Close()
-		if err != nil {
-			log.Fatal(err)
+		// Avoid writing a newline in case the previous line was the last in target.
+		if !scanner.Scan() {
+			break
 		}
-		r1.Body = io.NopCloser(bytes.NewBuffer(r1BodyBytes))
-		if len(r1BodyBytes) == 0 && len(r2.Body) == 0 {
-			return true
+		if _, err := out.WriteString("\n"); err != nil {
+			return err
 		}
-		if len(r1BodyBytes) == 0 && len(r2.Body) != 0 {
-			return false
-		}
-		if len(r1BodyBytes) != 0 && len(r2.Body) == 0 {
-			return false
-		}
-		// at this point both r1 and r2 have bodies
-		var r1Body interface{}
-		err = json.Unmarshal(r1BodyBytes, &r1Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		r2BodyBytes := []byte(r2.Body)
-		var r2Body interface{}
-		err = json.Unmarshal(r2BodyBytes, &r2Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		return reflect.DeepEqual(r1Body, r2Body)
-	})
-	return r, nil
+	}
+
+	_, err = out.Write(content[idx+len(target):])
+	if err != nil {
+		return err
+	}
+	// false positive
+	// nolint:gosec
+	return os.WriteFile(filename, out.Bytes(), 0644)
 }
