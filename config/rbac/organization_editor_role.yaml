@@ -3,29 +3,25 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
-    app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: organization-editor-role
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: github-operator
-    app.kubernetes.io/part-of: github-operator
+    app.kubernetes.io/name: output-dir
     app.kubernetes.io/managed-by: kustomize
   name: organization-editor-role
 rules:
-  - apiGroups:
-      - github.github-operator.eczy.io
-    resources:
-      - organizations
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - github.github-operator.eczy.io
-    resources:
-      - organizations/status
-    verbs:
-      - get
+- apiGroups:
+  - github.github-operator.eczy.io
+  resources:
+  - organizations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - github.github-operator.eczy.io
+  resources:
+  - organizations/status
+  verbs:
+  - get

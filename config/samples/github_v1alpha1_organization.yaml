@@ -2,11 +2,8 @@ apiVersion: github.github-operator.eczy.io/v1alpha1
 kind: Organization
 metadata:
   labels:
-    app.kubernetes.io/name: organization
-    app.kubernetes.io/instance: organization-sample
-    app.kubernetes.io/part-of: github-operator
+    app.kubernetes.io/name: output-dir
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: github-operator
   name: organization-sample
 spec:
-  login: test-organization
+  # TODO(user): Add fields here
