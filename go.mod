@@ -1,8 +1,7 @@
 module github.com/eczy/github-operator
 
 go 1.22.0
-
-toolchain go1.22.3
+toolchain go1.23.6
 
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.12.0
@@ -11,7 +10,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/shurcooL/githubv4 v0.0.0-20240120211514-18a1ae0e79dc
-	golang.org/x/oauth2 v0.24.0
+	golang.org/x/oauth2 v0.27.0
 	gopkg.in/dnaeon/go-vcr.v3 v3.2.0
 	k8s.io/apimachinery v0.31.2
 	k8s.io/client-go v0.31.2
