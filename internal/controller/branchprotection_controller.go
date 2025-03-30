@@ -102,7 +102,7 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	// if external resource does't exist and we aren't deleting the resource, create external resource
-	if observed == nil && bp.ObjectMeta.DeletionTimestamp.IsZero() {
+	if observed == nil && bp.DeletionTimestamp.IsZero() {
 		ghBp, err := r.createBranchProtection(ctx, bp)
 		if err != nil {
 			log.Error(err, "error creating GitHub branch protection")
@@ -113,7 +113,7 @@ func (r *BranchProtectionReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	// handle finalizer
 	if r.DeleteOnResourceDeletion {
-		if bp.ObjectMeta.DeletionTimestamp.IsZero() {
+		if bp.DeletionTimestamp.IsZero() {
 			// not being deleted
 			if !controllerutil.ContainsFinalizer(bp, branchProtectionFinalizerName) {
 				controllerutil.AddFinalizer(bp, branchProtectionFinalizerName)

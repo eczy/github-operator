@@ -48,10 +48,10 @@ var _ = Describe("controller", Ordered, func() {
 
 	AfterAll(func() {
 		By("uninstalling the Prometheus manager bundle")
-		utils.UninstallPrometheusOperator()
+		_ = utils.UninstallPrometheusOperator()
 
 		By("uninstalling the cert-manager bundle")
-		utils.UninstallCertManager()
+		_ = utils.UninstallCertManager()
 
 		By("removing manager namespace")
 		cmd := exec.Command("kubectl", "delete", "ns", namespace)

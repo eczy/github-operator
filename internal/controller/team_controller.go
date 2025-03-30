@@ -113,7 +113,7 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	// if external resource does't exist and we aren't deleting the resource, create external resource
-	if observed == nil && team.ObjectMeta.DeletionTimestamp.IsZero() {
+	if observed == nil && team.DeletionTimestamp.IsZero() {
 		log.Info("creating team", "name", team.Spec.Name)
 		ghTeam, err := r.createTeam(ctx, team)
 		if err != nil {
@@ -125,7 +125,7 @@ func (r *TeamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	// handle finalizer
 	if r.DeleteOnResourceDeletion {
-		if team.ObjectMeta.DeletionTimestamp.IsZero() {
+		if team.DeletionTimestamp.IsZero() {
 			// not being deleted
 			if !controllerutil.ContainsFinalizer(team, teamFinalizerName) {
 				controllerutil.AddFinalizer(team, teamFinalizerName)

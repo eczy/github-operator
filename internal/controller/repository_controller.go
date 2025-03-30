@@ -111,7 +111,7 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// if external resource does't exist and we aren't deleting the resource, create external resource
-	if observed == nil && repo.ObjectMeta.DeletionTimestamp.IsZero() {
+	if observed == nil && repo.DeletionTimestamp.IsZero() {
 		ghRepo, err := r.createRepository(ctx, repo)
 		if err != nil {
 			log.Error(err, "error creating GitHub repository")
@@ -122,7 +122,7 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// handle finalizer
 	if r.DeleteOnResourceDeletion {
-		if repo.ObjectMeta.DeletionTimestamp.IsZero() {
+		if repo.DeletionTimestamp.IsZero() {
 			// not being deleted
 			if !controllerutil.ContainsFinalizer(repo, repositoryFinalizerName) {
 				controllerutil.AddFinalizer(repo, repositoryFinalizerName)
