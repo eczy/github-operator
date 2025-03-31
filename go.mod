@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.14.0
-	github.com/gofri/go-github-ratelimit v1.1.0
+	github.com/gofri/go-github-ratelimit v1.1.1
 	github.com/google/go-github/v60 v60.0.0
 	github.com/onsi/ginkgo/v2 v2.23.3
 	github.com/onsi/gomega v1.36.2
