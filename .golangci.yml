@@ -1,21 +1,13 @@
 version: "2"
 run:
-  timeout: 5m
   allow-parallel-runners: true
 linters:
   default: none
-  exclusions:
-    rules:
-      - path: "api/*"
-        linters:
-          - lll
-      - path: "internal/*"
-        linters:
-          - dupl
-          - lll
   enable:
+    - copyloopvar
     - dupl
     - errcheck
+    - ginkgolinter
     - goconst
     - gocyclo
     - govet
@@ -24,11 +16,37 @@ linters:
     - misspell
     - nakedret
     - prealloc
+    - revive
     - staticcheck
     - unconvert
     - unparam
     - unused
+  settings:
+    revive:
+      rules:
+        - name: comment-spacings
+        - name: import-shadowing
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - lll
+        path: api/*
+      - linters:
+          - dupl
+          - lll
+        path: internal/*
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 formatters:
   enable:
     - gofmt
     - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
