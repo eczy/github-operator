@@ -30,11 +30,11 @@ type RepositorySpec struct {
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
-	//+kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 	// The name of the repository.
 	Name string `json:"name"`
 
-	//+kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 	// The organization name. The name is not case sensitive.
 	Owner string `json:"owner"`
 
@@ -68,7 +68,7 @@ type RepositorySpec struct {
 	// +optional
 	AllowUpdateBranch *bool `json:"allowUpdateBranch,omitempty"`
 
-	//Either true to allow squash-merging pull requests, or false to prevent squash-merging. Default: true.
+	// Either true to allow squash-merging pull requests, or false to prevent squash-merging. Default: true.
 	// +optional
 	AllowSquashMerge *bool `json:"allowSquashMerge,omitempty"`
 

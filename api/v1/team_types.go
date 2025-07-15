@@ -30,11 +30,11 @@ type TeamSpec struct {
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
-	//+kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 	// Organization name. Not case sensitive.
 	Organization string `json:"organization"`
 
-	//+kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 	// Name of the team.
 	Name string `json:"name"`
 

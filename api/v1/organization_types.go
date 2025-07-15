@@ -30,23 +30,21 @@ type OrganizationSpec struct {
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
-	//+kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 	// The organization name. The name is not case sensitive.
 	Login string `json:"login"`
 
-	//+kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 	// The shorthand name of the company.
 	// +optional
 	Name *string `json:"name,omitempty"`
 
-	//+kubebuilder:validation:MinLength=1
-
+	// +kubebuilder:validation:MinLength=1
 	// Billing email address. This address is not publicized.
 	// +optional
 	BillingEmail *string `json:"billingEmail,omitempty"`
 
-	//+kubebuilder:validation:MinLength=1
-
+	// +kubebuilder:validation:MinLength=1
 	// The company name.
 	// +optional
 	Company *string `json:"company,omitempty"`

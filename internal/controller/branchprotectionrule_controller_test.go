@@ -109,7 +109,7 @@ var _ = Describe("BranchProtection Controller", func() {
 
 			By("Checking the BranchProtection Status")
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
-			Expect(resource.Status.NodeId).NotTo(Equal(nil))
+			Expect(resource.Status.NodeId).NotTo(BeNil())
 
 			By("Checking the GitHub branch protection rule exists")
 			_, err = gitHubClient.GetBranchProtectionByOwnerRepoPattern(ctx, testOrganization, testRepoName, testBranchProtectionPattern)

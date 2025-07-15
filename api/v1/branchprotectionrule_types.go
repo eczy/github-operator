@@ -30,17 +30,17 @@ type BranchProtectionRuleSpec struct {
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
-	//+kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 
 	// The owner of the repository associated with this branch protection rule.
 	RepositoryOwner string `json:"repositoryOwner"`
 
-	//+kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 
 	// The repository associated with this branch protection rule.
 	RepositoryName string `json:"repositoryName"`
 
-	//+kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 
 	// Identifies the protection rule pattern.
 	Pattern string `json:"pattern"`
